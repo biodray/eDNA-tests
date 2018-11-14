@@ -6,3 +6,5 @@
 *.fastq
 *.xls
 *.xlsx
+*.Rproj
+SEQ.fasta.temp
