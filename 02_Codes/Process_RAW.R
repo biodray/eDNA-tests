@@ -21,24 +21,27 @@ library(dada2); packageVersion("dada2") # Faire mettre cette info dans le log
 
 library(Biostrings)
 
+# Internal functions
+source(file.path("./03_Functions",  list.files("./03_Functions")))
+
 # Data --------------------------------------------------------------------
 
-info.path <- "./00_Data/00_FileInfos"
+info.path <- get.value("info.path")
 
 raw.path     <- "./00_Data/01a_RawData" 
 raw_unz.path <- "./00_Data/01b_RawData_unzipped" 
 
-ref.path <- "./00_Data/03_RefSeq"
+ref.path <- get.value("ref.path")
 
 filt_dada2.path <- "./00_Data/02a_Filtered_dada2"
 filt_IBIS.path <- "./00_Data/02b_Filtered_IBIS"
 filt_JAMP.path  <- "./00_Data/02c_Filtered_JAMP"
 
-log.path <- "./03_Log" 
+log.path <- get.value("log.path")
 
-seqtab.path <- "./01_Results/01_Seqtab"
+result.path <- get.value("sample.path")
 
-Sample.xl <- "DB_Echantillons.xlsx"
+Sample.xl <- get.value("Sample.xl")
 
 DataSample <- read_excel(file.path(info.path,Sample.xl),sheet="DataSample",na="NA",guess_max=100000)
 DataSeq    <- read_excel(file.path(info.path,Sample.xl),sheet="DataSeq",na="NA",guess_max=100000)
@@ -535,20 +538,14 @@ cat(paste0("12S: Percentage of ASV remaining after chimera removal: ",
            round(sum(seqtab.cytB.F)/sum(seqtab.cytB.F.int)*100,1), "%"), 
     paste0("12S.R: Percentage of ASV remaining after chimera removal: ", 
            round(sum(seqtab.cytB.R)/sum(seqtab.cytB.R.int)*100,1), "%"),
-    paste0("\nSeqtab saved in: ",file.path(seqtab.path, "Dada2.Seqtab.data")),
     "\n-------------------------\n",  
     file=file.path(log.path, "Process_RAW.log.txt"), 
     append = T, sep = "\n")
 
 # Save Seqtab
 
-save(file = file.path(seqtab.path, "Dada2.Seqtab.data"), 
-     list = c("seqtab.12s",
-              "seqtab.12s.F",
-              "seqtab.12s.R",
-              "seqtab.cytB",
-              "seqtab.cytB.F",
-              "seqtab.cytB.R"))
+save(file = file.path(result.path, "Seqtab.data"), 
+     list = ls(pattern = "seqtab."))
 
 # Get track
 
@@ -688,20 +685,9 @@ seqtab.12s.IBIS <-  makeSeqTabFromScratch(files = all.files[["IBIS.files"]],
                                           path = filt_IBIS.path) 
 
 
-# Save Seqtab
 
-save(file = file.path(seqtab.path, "Dada2.Seqtab.IBIS.data"), 
-     list = c("seqtab.12s.IBIS")
-     )
-
-
-cat("\n-------------------------\n",
-    paste0("IBIS: Seqtab saved in: ",file.path(seqtab.path, "Dada2.Seqtab.data")),
-    "\n-------------------------\n",  
-    file=file.path(log.path, "Process_RAW.log.txt"), 
-    append = T, sep = "\n")
-
-
+save(file = file.path(result.path, "Seqtab.data"), 
+     list = ls(pattern = "seqtab."))
 
 
 # JAMP: raw to OTU -------------------------------------------------------------
@@ -724,6 +710,14 @@ cat("\n-------------------------\n",
 
 
 # END of the script -------------------------------------------------------
+
+
+cat("\n-------------------------\n",
+    paste0("Seqtab saved in: ",file.path(result.path, "Seqtab.data")),
+    "\n-------------------------\n",  
+    file=file.path(log.path, "Process_RAW.log.txt"), 
+    append = T, sep = "\n")
+
 
 rm(list = c("msg1","msg2"))
 
