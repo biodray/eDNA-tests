@@ -3,3 +3,4 @@
 # Except this file
 !.gitignore
 !*log.txt
+!Options.csv

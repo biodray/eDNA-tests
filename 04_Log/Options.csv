@@ -1,0 +1,6 @@
+"x";"value"
+"info.path";"./00_Data/00_FileInfos"
+"ref.path";"./00_Data/03_RefSeq"
+"result.path";"./01_Results/01_data"
+"log.path";"./04_Log"
+"Sample.xl";"DB_Echantillons.xlsx"

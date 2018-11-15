@@ -22,7 +22,6 @@ source(file.path("./03_Functions",  list.files("./03_Functions")))
 load(file = file.path(get.value("result.path"), "Compil.data"))
 load(file = file.path(get.value("result.path"), "Taxo.data"))
 
-
 Sample.xl <-  file.path(get.value("info.path"), get.value("Sample.xl"))
 
 DataSample <- read_excel(Sample.xl,sheet="DataSample",na="NA",guess_max=100000)
@@ -46,8 +45,7 @@ count.taxon <- function(TAXO, CLASS = c("Class", "Order", "Family", "Genus", "Sp
     res1[x] <- nrow(TAXO[which(!is.na(TAXO[,CLASS[x]])),])
     res2[x] <- length(unique(na.omit(TAXO[,CLASS[x]])))
   }
-  
-  return(cbind(res1, res2))
+    return(cbind(res1, res2))
 }
 
 diff.taxon <- function(TAXO1, TAXO2, CLASS = c("Class", "Order", "Family", "Genus", "Species")){
@@ -91,19 +89,19 @@ RDPvsIDT <- function(RDP, IDT, CLASS = c("Class", "Order", "Family", "Genus", "S
 
 #
 
-ls(pattern = "compil.R|Compil.D")
-
-LS = 
-
-add.info <- function(LS = ls(pattern = "compil.R|Compil.D"), INFO = DataSeq){
+add.info <- function(OBJ = ls(pattern = "compil.R|Compil.D"), INFO = DataSeq){
 
   res <- list()
   
-  for(x in LS){
+  for(x in OBJ){
     DATA <- get(x)
     if(str_detect(x, "RDP")){
       DATA <- DATA[[2]]
     }
+    
+    DATA$Sample <- paste(sapply(str_split(DATA$Sample, "-"), `[`, 2),
+                         sapply(str_split(DATA$Sample, "-"), `[`, 3),
+                         sep = "-")
     
     DATA <-  DATA %>% left_join(INFO %>% select(SeqType,IbisID,NomLac,CatSite), by = c("Sample" = "IbisID"))
 
@@ -114,27 +112,14 @@ add.info <- function(LS = ls(pattern = "compil.R|Compil.D"), INFO = DataSeq){
 }
 
 
-test <- add.info()
-
-str(test)
-
-
-View(compil.IDT.cytB[["Species"]])
-
-compil <- compil.seq(seqtab.nochim, taxotab.nochim)
-
-compil.wInfo <- compil %>% left_join(DataSeq %>% select(SampleID, SeqType,IbisID,NomLac,CatSite), by = "IbisID")
-
-compil.wInfo %>% filter(SeqType == "blank") %>% write.table("Results/BlankContent_2018-09-12.txt", row.names = FALSE)
-
-
-compil.wInfo %>% filter(SeqType == "mix") %>% write.table("Results/MixContent_2018-09-12.txt", row.names = FALSE)
-
-compil.wInfo %>% filter(IbisID == "p1-A9")
-
 
 
 # Comparison --------------------------------------------------------------
+
+
+compil.wInfo <- add.info(ls(pattern = "compil.R|Compil.D"), DataSeq)
+
+names(compil.wInfo)
 
 
 # Assign species
