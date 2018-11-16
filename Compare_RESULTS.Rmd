@@ -1,0 +1,158 @@
+---
+title: "eDNA results"
+author: "Audrey Bourret"
+date: "15 novembre 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+if(!require(knitr)){install.packages("knitr")}
+library(knitr)
+
+if(!require(kableExtra)){install.packages("kableExtra")}
+library(kableExtra)
+
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# Internal functions
+source(file.path("./03_Functions",  list.files("./03_Functions")))
+
+# Run Compare_RESULTS.R
+source(file.path("./02_Codes/Compare_RESULTS.R"))
+
+```
+
+## Comparison 12S
+
+
+```{r res1, echo=TRUE, results='asis'}
+
+NAMES <- names(compil.wInfo)[str_detect(names(compil.wInfo), pattern = "12S.Genus|12S.Species")]
+
+for(x in NAMES){
+  cat("\n")
+  compil.wInfo[[x]] %>% filter(SeqType %in% c("sample", "mix", "blank")) %>% 
+    group_by(SeqType, groups) %>% 
+    summarise(Sum = round(mean(N),1)) %>% 
+    spread(key = SeqType, value = Sum) %>% 
+    kable(caption = x) %>% kable_styling(bootstrap_options = c("condensed"), full_width = T) %>% print()
+  cat("\n")
+  
+}
+
+class.diff(taxo.RDP.12S, taxo.IDT.12S[[2]])
+
+# Ibis
+class.diff(taxo.RDP.12S, taxo.RDP.12S.IBIS)
+class.diff(taxo.IDT.12S[[2]], taxo.IDT.12S.IBIS[[2]])
+
+```
+
+## Comparison cytB - Family and species
+
+
+```{r res2, echo=TRUE, results='asis'}
+
+NAMES <- names(compil.wInfo)[str_detect(names(compil.wInfo), pattern = "cytB.Genus|cytB.Species|RDP.cytB.F.Genus|RDP.cytB.F.Species")]
+
+for(x in NAMES){
+  cat("\n")
+  compil.wInfo[[x]] %>% filter(SeqType %in% c("sample", "mix", "blank")) %>% 
+    group_by(SeqType, groups) %>% 
+    summarise(Sum = round(mean(N),1)) %>% 
+    spread(key = SeqType, value = Sum) %>% 
+    kable(caption = x) %>% kable_styling(bootstrap_options = c("condensed"), full_width = T) %>% print()
+  cat("\n")
+  
+}
+
+
+```
+
+## Check blank
+
+```{r res3, results='asis'}
+
+NAMES <- names(compil.wInfo)[str_detect(names(compil.wInfo), pattern = "12S.Class|12S.Family|12S.Genus|12S.Species")]
+
+for(x in NAMES){
+  cat("\n",x,"\n", sep="")
+  compil.wInfo[[x]] %>% filter(SeqType %in% c("blank")) %>% 
+    group_by(SampleID, groups) %>% 
+    summarise(Sum = round(mean(N),1)) %>% 
+    spread(key = SampleID, value = Sum) %>% 
+    kable(caption = x) %>% kable_styling(bootstrap_options = c("condensed"), full_width = T) %>% 
+    print()
+  cat("\n")
+  
+}
+
+
+NAMES <- names(compil.wInfo)[str_detect(names(compil.wInfo), pattern = "cytB.Class|cytB.Family|cytB.Genus|cytB.Species")]
+
+for(x in NAMES){
+  cat("\n",x,"\n", sep="")
+  compil.wInfo[[x]] %>% filter(SeqType %in% c("blank")) %>% 
+    group_by(SampleID, groups) %>% 
+    summarise(Sum = round(mean(N),1)) %>% 
+    spread(key = SampleID, value = Sum) %>% 
+    kable(caption = x) %>% kable_styling(bootstrap_options = c("condensed"), full_width = T) %>% 
+    print()
+  cat("\n")
+  
+}
+
+
+```
+
+## N samples with Salvelinus, Perca or Cyprinidaea
+
+```{r}
+NAMES <- names(compil.wInfo)[str_detect(names(compil.wInfo), pattern = "Genus")]
+
+for(x in NAMES){
+  cat("\n\n",x,"\n", sep="")
+  
+  DATA <- compil.wInfo[[x]] %>% filter(groups %in% c("Salvelinus"), SeqType == "sample", N>=1) 
+
+  cat("N samples with Salvelinus:", length(DATA$NomLac), sep ="\n")
+  cat("N lakes with Salvelinus:", length(unique(DATA$NomLac)), sep ="\n")
+
+  cat(sort(unique(DATA$NomLac)) , sep=", ")
+
+}
+
+
+
+NAMES <- names(compil.wInfo)[str_detect(names(compil.wInfo), pattern = "Genus")]
+
+for(x in NAMES){
+  cat("\n\n",x,"\n", sep="")
+  
+  DATA <- compil.wInfo[[x]] %>% filter(groups %in% c("Perca"), SeqType == "sample", N>=1) 
+  
+  cat("N samples with Perca:", length(DATA$NomLac), sep ="\n")
+  cat("N lakes with Perca:", length(unique(DATA$NomLac)), sep ="\n")
+  
+  cat(sort(unique(DATA$NomLac)) , sep=", ")
+  
+}
+
+
+NAMES <- names(compil.wInfo)[str_detect(names(compil.wInfo), pattern = "Family")]
+
+for(x in NAMES){
+  cat("\n\n",x,"\n", sep="")
+  
+  DATA <- compil.wInfo[[x]] %>% filter(groups %in% c("Cyprinidae"), SeqType == "sample", N>=1) 
+  
+  cat("N samples with Cyprinidae:", length(DATA$NomLac), sep ="\n")
+  cat("N lakes with Cyprinidae:", length(unique(DATA$NomLac)), sep ="\n")
+  
+  cat(sort(unique(DATA$NomLac)) , sep=", ")
+  
+}
+```
+
+
