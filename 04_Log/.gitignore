@@ -1,5 +1,6 @@
 # Ignore everything in this directory
 *
+Process_RAW.log.txt
 # Except this file
 !.gitignore
 !Options.csv
