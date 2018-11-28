@@ -18,6 +18,7 @@ library(tidyverse) # for data manipulation
 library(readxl)
 
 library(dada2); packageVersion("dada2") # Faire mettre cette info dans le log
+library(JAMP)
 
 library(Biostrings)
 
@@ -26,27 +27,26 @@ source(file.path("./03_Functions",  list.files("./03_Functions")))
 
 # Data --------------------------------------------------------------------
 
-info.path <- get.value("info.path")
+get.value("info.path")
 
-raw.path     <- "./00_Data/01a_RawData" 
-raw_unz.path <- "./00_Data/01b_RawData_unzipped" 
+get.value("raw.path")  
+get.value("raw_unz.path")   
+get.value("raw_unz_rename.path")
 
-ref.path <- get.value("ref.path")
+get.value("ref.path")
 
 filt_dada2.path <- "./00_Data/02a_Filtered_dada2"
 filt_IBIS.path <- "./00_Data/02b_Filtered_IBIS"
 filt_JAMP.path  <- "./00_Data/02c_Filtered_JAMP"
 
-log.path <- get.value("log.path")
+get.value("log.path")
 
-result.path <- get.value("sample.path")
+get.value("result.path")
 
-Sample.xl <- get.value("Sample.xl")
-
-DataSample <- read_excel(file.path(info.path,Sample.xl),sheet="DataSample",na="NA",guess_max=100000)
-DataSeq    <- read_excel(file.path(info.path,Sample.xl),sheet="DataSeq",na="NA",guess_max=100000)
-Amorces    <- read_excel(file.path(info.path,Sample.xl),sheet="Amorces",na="NA",guess_max=100000)
-Inventaire <- read_excel(file.path(info.path,Sample.xl),sheet="DataLac",na="NA",guess_max=100000)
+DataSample <- read_excel(get.value("Sample.xl"),sheet="DataSample",na="NA",guess_max=100000)
+DataSeq    <- read_excel(get.value("Sample.xl"),sheet="DataSeq",na="NA",guess_max=100000)
+Amorces    <- read_excel(get.value("Sample.xl"),sheet="Amorces",na="NA",guess_max=100000)
+Inventaire <- read_excel(get.value("Sample.xl"),sheet="DataLac",na="NA",guess_max=100000)
 
 # Format de DataSeq avec les données IBIS (p1-A1)
 
@@ -259,10 +259,19 @@ makeSeqTabFromScratch <- function(files, name, path=""){
 
 # Quality assesment - RAW ------------------------------------------------------
 
+list.raw.files <- function(LOCI, 
+                           PATH, 
+                           FRpattern = c("R1", "R2"), 
+                           STARTpattern = "EP-",
+                           ENDpattern = "_L001_R1_001.fastq")
 
+all.files <- list.raw.files(LOCI = c("12s", "cytB"), 
+                            PATH = get.value("raw_unz_rename.path"),
+                            FRpattern = c("R1", "R2"), 
+                            STARTpattern = "",
+                            ENDpattern = "R1.fastq")
 
-all.files <- list.raw.files(LOCI = c("12s", "cytB"), PATH = raw_unz.path)
-
+list.files(get.value("raw_unz_rename.path"))
 
 str(all.files)
 
