@@ -17,6 +17,8 @@ library(stringr)   # for pattern detection
 library(tidyverse) # for data manipulation
 library(readxl)
 
+library(ggpubr) # on github - for nice graphs
+
 library(dada2); packageVersion("dada2") # Faire mettre cette info dans le log
 library(JAMP)
 
@@ -46,7 +48,7 @@ get.value("result.path")
 DataSample <- read_excel(get.value("Sample.xl"),sheet="DataSample",na="NA",guess_max=100000)
 DataSeq    <- read_excel(get.value("Sample.xl"),sheet="DataSeq",na="NA",guess_max=100000)
 Amorces    <- read_excel(get.value("Sample.xl"),sheet="Amorces",na="NA",guess_max=100000)
-Inventaire <- read_excel(get.value("Sample.xl"),sheet="DataLac",na="NA",guess_max=100000)
+#Inventaire <- read_excel(get.value("Sample.xl"),sheet="DataLac",na="NA",guess_max=100000)
 
 # Format de DataSeq avec les données IBIS (p1-A1)
 
@@ -271,56 +273,107 @@ all.files <- list.raw.files(LOCI = c("12s", "cytB"),
                             STARTpattern = "",
                             ENDpattern = "R1.fastq")
 
-list.files(get.value("raw_unz_rename.path"))
-
 str(all.files)
 
 
-if(file.exists("01_Results/QualityProfile.12S.raw.pdf")){
-  
-  msg1 <- "12S: Quality assement not done on raw files (previously done)"
 
+plotQplus <- function(files, locus, pattern) {
+  graph.ls <- list()
+
+  for(l in locus){
+    print(l)
+    
+    files.red <- files %>% str_subset(l)
+    
+    for(p in pattern){
+      
+      files.red2 <- files.red %>% str_subset(p)      
+      print(p)
+    
+      graph <- plotQualityProfile(files.red2, aggregate = T)
+    
+      graph <- graph + labs(x = "Base pair")
+
+      graph.ls[[paste(l,p,sep="-")]] <- graph 
+    }
+  }
+  return(graph.ls)  
+}   
+
+
+if(file.exists(get.value("Qplot.RAW.data"))){
+  load(get.value("Qplot.RAW.data"))
+  
 } else {
-  
-  pdf("01_Results/QualityProfile.12S.raw.pdf", width=8, height=8,paper='letter') 
+  graph.tot.ls   <- plotQplus(list.files(get.value("raw_unz_rename.path"), full.names = T),
+                      locus = c("12s", "cytB"), pattern = c("R1", "R2"))
 
-    plotQualityProfile(file.path(raw_unz.path, all.files[["12s.raw.files.R1"]]), aggregate = T)
-    plotQualityProfile(file.path(raw_unz.path, all.files[["12s.raw.files.R2"]]), aggregate = T)
-  
-  dev.off()
+  graph.sample.ls <- plotQplus(list.files(get.value("raw_unz_rename.path"), pattern = "Sample", full.names = T),
+                      locus = c("12s", "cytB"), pattern = c("R1", "R2"))
 
-  msg1 <- "12S: Quality assement done on raw files: 01_Results/QualityProfile.12S.raw.pdf"  
-
+  save(file = get.value("Qplot.RAW.data"), 
+       list = c("graph.tot.ls" , "graph.sample.ls"))
 }
 
+# devrait peut-être aller dans un autre script
+names(graph.tot.ls)
+names(graph.sample.ls)
 
-if(file.exists("01_Results/QualityProfile.CYTB.raw.pdf")){
-  
-  msg2 <- "cytB: Quality assement not done on raw files (previously done)"
+graphQ.total <- ggarrange(graph.tot.ls[[1]] + labs(title = "12S  - Forward"),
+                          graph.tot.ls[[2]] + labs(title = "12S  - Reverse"),
+                          graph.tot.ls[[3]] + labs(title = "CYTB - Forward"),
+                          graph.tot.ls[[4]] + labs(title = "CYTB - Reverse"),
+                          labels = LETTERS[1:4],
+                          ncol = 2, nrow = 2)
 
-} else {
+graphQ.total
 
-   pdf("01_Results/QualityProfile.CYTB.raw.pdf", width=8, height=8,paper='letter') 
+graphQ.sample<- ggarrange(graph.sample.ls[[1]] + labs(title = "12S  - Forward"),
+                          graph.sample.ls[[2]] + labs(title = "12S  - Reverse"),
+                          graph.sample.ls[[3]] + labs(title = "CYTB - Forward"),
+                          graph.sample.ls[[4]] + labs(title = "CYTB - Reverse"),
+                          labels = LETTERS[1:4],
+                          ncol = 2, nrow = 2)
 
-    plotQualityProfile(file.path(raw_unz.path, all.files[["cytB.raw.files.R1"]]), aggregate = T)
-    plotQualityProfile(file.path(raw_unz.path, all.files[["cytB.raw.files.R2"]]), aggregate = T)
+graphQ.sample
 
-  dev.off()  
-  
-  msg2 <- "cytB: Quality assement done on raw files: 01_Results/QualityProfile.cytB.raw.pdf"  
+# Save graphs
 
-}
+ggsave(filename = "QualityPlotTotal.pdf", 
+       path = get.value("result.path"),       
+       plot = graphQ.total,
+       device = "pdf",
+       width = 8, height = 8, units = "in")
 
-cat(msg1, msg2, "\n-------------------------\n",  
-    file=file.path(log.path, "Process_RAW.log.txt"), 
+ggsave(filename = "QualityPlotTotal.png", 
+       path = get.value("result.path"),
+       plot = graphQ.total,
+       device = "png",
+       width = 8, height = 8, units = "in")
+
+ggsave(filename = "QualityPlotSample.pdf", 
+       path = get.value("result.path"),       
+       plot = graphQ.sample,
+       device = "pdf",
+       width = 8, height = 8, units = "in")
+
+ggsave(filename = "QualityPlotSample.png", 
+       path = get.value("result.path"),
+       plot = graphQ.sample,
+       device = "png",
+       width = 8, height = 8, units = "in")
+
+
+cat("Graphics done!", "\n-------------------------\n",  
+    file=get.value("RAW.log"), 
     append = T, sep = "\n")
 
 
 # DADA2: raw to ASV ------------------------------------------------------------
 
-all.files <-  add.filt.files(LOCI = c("12s", "cytB"), PATH = filt_dada2.path, FILE.LS = all.files) 
+#all.files <-  add.filt.files(LOCI = c("12s", "cytB"), PATH = filt_dada2.path, FILE.LS = all.files) 
 
-str(all.files)
+#str(all.files)
 
 # Filtrage en soi
 
@@ -329,33 +382,41 @@ Amorces %>% filter(Locus == "cytB") %>% pull(Amorce) %>% nchar()
 
 # Real filtering
 
-
-filter.12s.summary <- filterAndTrim(fwd = file.path(raw_unz.path, all.files[["12s.raw.files.R1"]]),
-                                         filt = all.files[["12s.filt.files.R1"]],
-                                         rev = file.path(raw_unz.path, all.files[["12s.raw.files.R2"]]),
-                                         filt.rev = all.files[["12s.filt.files.R2"]],
-                                         truncQ=10, # minimum Q score, 10 = 90% base call accuracy
-                                         truncLen = c(100,100), # Taille min/max des reads
-                                         trimLeft= c(18, 18), # Enlever les seq des amorces, 
-                                         maxEE=c(1,1),
-                                         #orient.fwd = c("ACTGG"), # debut de l'amorce F
-                                         compress = TRUE,
-                                         multithread=FALSE, # TRUE on linux
-                                         verbose = TRUE) 
+# function to add filt names
+filt.names <- function(files){
+  new.files <- files %>% str_replace(".fastq", "_filt.fastq.gz") %>%
+                         str_replace(get.value("raw_unz_rename.path"), get.value("filt_dada2.path"))
+  
+  new.files
+}
 
 
-filter.cytB.summary <- filterAndTrim(fwd = file.path(raw_unz.path, all.files[["cytB.raw.files.R1"]]),
-                                    filt = all.files[["cytB.filt.files.R1"]],
-                                    rev = file.path(raw_unz.path, all.files[["cytB.raw.files.R2"]]),
-                                    filt.rev = all.files[["cytB.filt.files.R2"]],
-                                    truncQ=10, # minimum Q score, 10 = 90% base call accuracy
-                                    truncLen = c(100,100), # Taille min/max des reads
-                                    trimLeft= c(35, 34), # Enlever les seq des amorces
-                                    maxEE=c(1,1),
-                                    compress = TRUE,
-                                    multithread=FALSE, # TRUE on linux
-                                    verbose = TRUE) 
+filter.12s.summary <- filterAndTrim(fwd = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R1"),
+                                          filt = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R1") %>% filt.names(),
+                                          rev = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R2"),
+                                          filt.rev = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R2") %>% filt.names(),
+                                          truncQ=10, # minimum Q score, 10 = 90% base call accuracy
+                                          truncLen = c(100,100), # Taille min/max des reads
+                                          trimLeft= c(0, 0), # Je vais les enlever avec cutadapt 
+                                          maxEE=c(1,1),
+                                          #orient.fwd = c("ACTGG"), # debut de l'amorce F
+                                          compress = TRUE,
+                                          multithread=FALSE, # TRUE on linux
+                                          verbose = TRUE) 
 
+filter.cytB.summary <- filterAndTrim(fwd = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R1"),
+                                     filt = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R1") %>% filt.names(),
+                                     rev = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R2"),
+                                     filt.rev = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R2") %>% filt.names(),
+                                     truncQ=10, # minimum Q score, 10 = 90% base call accuracy
+                                     truncLen = c(100,100), # Taille min/max des reads
+                                     trimLeft= c(35, 34), # Enlever les seq des amorces
+                                     maxEE=c(1,1),
+                                     compress = TRUE,
+                                     multithread=FALSE, # TRUE on linux
+                                     verbose = TRUE) 
+
+# Add a cut adapt stuff
 
 cat(paste0("\n Correlation between 12S and cytB reads after DADA2 filtration : ",
     round(cor(filter.12s.summary[,"reads.out"], filter.cytB.summary[,"reads.out"], method = "spearman"),2)

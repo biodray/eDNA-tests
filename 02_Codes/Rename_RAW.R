@@ -25,8 +25,6 @@ raw_unz.path <- get.value("raw_unz.path")
 
 DataSample <- read_excel(get.value("Sample.xl"),sheet="DataSample",na="NA",guess_max=100000)
 DataSeq    <- read_excel(get.value("Sample.xl"),sheet="DataSeq",na="NA",guess_max=100000)
-Amorces    <- read_excel(get.value("Sample.xl"),sheet="Amorces",na="NA",guess_max=100000)
-Inventaire <- read_excel(get.value("Sample.xl"),sheet="DataLac",na="NA",guess_max=100000)
 
 # Format de DataSeq avec les données IBIS (p1-A1)
 
@@ -35,7 +33,7 @@ DataSeq <- DataSeq %>% mutate (IbisID = paste0("p",Plaque,"-",Puit)) %>%
 
 
 DataSeq <- DataSeq %>% mutate(Name = ifelse(SeqType %in% c("sample", "dup.sample"), 
-                                            paste(substr(NomLac,1,3), substr(CatSite,1,1), IbisID ,sep="_"),
+                                            paste("Sample",substr(NomLac,1,3), substr(CatSite,1,1), IbisID ,sep="_"),
                                             paste(SampleID,IbisID ,sep="_")))
 
 unique(DataSeq$Name)
@@ -53,7 +51,7 @@ file.copy(list.files(get.value("raw.path"), full.name = T, pattern = "fastq"),
           file.path(get.value("raw_unz.path"), list.files(get.value("raw.path"), full.name = F, pattern = "fastq"))
           )
 
-# Unzip
+# Unzip (fonctionne sur linux, pê pas sur windows)
 system2("gunzip", paste(file.path(list.files(get.value("raw_unz.path"), full.name = T, pattern =".fastq"))))
 
 
@@ -102,7 +100,7 @@ new.names.final
 # Enlever les fichiers précédents (unz)
 file.remove(list.files(get.value("raw_unz_rename.path"), full.name = T, pattern =".fastq"))
 
-# Copier unz -> unz_rename
+# Copier unz -> unz_rename (can take some times)
 
 file.copy(list.files(get.value("raw_unz.path"), full.name = T, pattern = "fastq"),
           file.path(get.value("raw_unz_rename.path"), list.files(get.value("raw_unz.path"), full.name = F, pattern = "fastq"))
