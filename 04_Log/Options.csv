@@ -8,6 +8,7 @@
 "ref.path";"./00_Data/03_RefSeq"
 "result.path";"./01_Results"
 "result.data.path";"./01_Results/01_data"
+"result.Q.path";"./01_Results/02_ReadsQ"
 "log.path";"./04_Log"
 "Sample.xl";"./00_Data/00_FileInfos/DB_Echantillons.xlsx"
 "Raw.log";"./04_Log/Process_RAW.log.txt"

@@ -340,25 +340,25 @@ graphQ.sample
 # Save graphs
 
 ggsave(filename = "QualityPlotTotal.pdf", 
-       path = get.value("result.path"),       
+       path = get.value("result.Q,path"),       
        plot = graphQ.total,
        device = "pdf",
        width = 8, height = 8, units = "in")
 
 ggsave(filename = "QualityPlotTotal.png", 
-       path = get.value("result.path"),
+       path = get.value("result.Q.path"),
        plot = graphQ.total,
        device = "png",
        width = 8, height = 8, units = "in")
 
 ggsave(filename = "QualityPlotSample.pdf", 
-       path = get.value("result.path"),       
+       path = get.value("result.Q.path"),       
        plot = graphQ.sample,
        device = "pdf",
        width = 8, height = 8, units = "in")
 
 ggsave(filename = "QualityPlotSample.png", 
-       path = get.value("result.path"),
+       path = get.value("result.Q.path"),
        plot = graphQ.sample,
        device = "png",
        width = 8, height = 8, units = "in")
@@ -370,6 +370,13 @@ cat("Graphics done!", "\n-------------------------\n",
 
 
 FastQC(files = list.files(get.value("raw_unz_rename.path"), full.names = T), exe = "fastqc")
+
+
+# Try to move FastQ files
+
+cmd <- paste(file.path(get.value("raw_unz_rename.path"), "FastQC" ), file.path(get.value("result.Q.path"), "FastQC" ))
+
+system2("mv", cmd)
 
 
 # DADA2: raw to ASV ------------------------------------------------------------
