@@ -369,6 +369,9 @@ cat("Graphics done!", "\n-------------------------\n",
     append = T, sep = "\n")
 
 
+FastQC(files = list.files(get.value("raw_unz_rename.path"), full.names = T), exe = "fastqc")
+
+
 # DADA2: raw to ASV ------------------------------------------------------------
 
 #all.files <-  add.filt.files(LOCI = c("12s", "cytB"), PATH = filt_dada2.path, FILE.LS = all.files) 
