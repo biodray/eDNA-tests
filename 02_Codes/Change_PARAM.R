@@ -48,6 +48,7 @@ add.param(PARAM) <- c("ref.path", "./00_Data/03_RefSeq")
 add.param(PARAM) <- c("result.path", "./01_Results")
 add.param(PARAM) <- c("result.data.path", "./01_Results/01_data")
 add.param(PARAM) <- c("result.Q.path", "./01_Results/02_ReadsQ")
+add.param(PARAM) <- c("result.FQraw.path", "./01_Results/02_ReadsQ/FastQC_Raw")
 add.param(PARAM) <- c("log.path", "./04_Log")
 
 
