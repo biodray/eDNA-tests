@@ -25,8 +25,13 @@ library(JAMP)
 library(Biostrings)
 
 # Internal functions
-source(file.path("./03_Functions",  list.files("./03_Functions")))
+for(i in 1:length( list.files("./03_Functions") )){
+  source(file.path("./03_Functions",  list.files("./03_Functions")[i]))  
+}
 
+
+
+getwd()
 # Data --------------------------------------------------------------------
 
 get.value("info.path")
@@ -370,12 +375,48 @@ cat("Graphics done!", "\n-------------------------\n",
 
 # FastQC
 
+
+
+if(get_os() == "os"){ # to run only on os and not windows
+
+  cmd <- paste("--outdir", get.value("result.FQraw.path"), list.files(get.value("raw_unz_rename.path"), full.names = T))
+  system2("fastqc", cmd)
+  
+} else {cat("Cannot perform FastQC on windows -- sorry!!")}
+
+
+##from JAMP
 #FastQC(files = list.files(get.value("raw_unz_rename.path"), full.names = T), exe = "fastqc")
 
-cmd <- paste("--outdir", get.value("result.FQraw.path"), list.files(get.value("raw_unz_rename.path"), full.names = T)[1])
-system2("fastqc", cmd)
+# from fastqc
+#fastqc_install()
+#fastqc(fq.dir = get.value("result.FQraw.path"), 
+#       qc.dir = get.value("raw_unz_rename.path"),
+#       threads = 4)
 
 
+if(!require(devtools)) install.packages("devtools")
+devtools::install_github("kassambara/fastqcr")
+
+library(fastqcr)
+
+qc.dir <- system.file("fastqc_results", package = "fastqcr")
+
+list.files(qc.dir)
+
+qc <- qc_aggregate(get.value("result.FQraw.path"))
+
+list.files(get.value("result.FQraw.path"))
+
+summary(qc)
+qc_stats(qc)
+
+qc_fails(qc)
+qc_warns(qc)
+
+qc_problems(qc)
+
+qc_read()
 
 # DADA2: raw to ASV ------------------------------------------------------------
 
@@ -761,8 +802,6 @@ all.files[["IBIS.files.names"]] <- all.files[["IBIS.files"]] %>% str_remove(patt
 seqtab.12s.IBIS <-  makeSeqTabFromScratch(files = all.files[["IBIS.files"]],
                                           name = all.files[["IBIS.files.names"]],
                                           path = filt_IBIS.path) 
-
-
 
 save(file = file.path(result.path, "Seqtab.data"), 
      list = ls(pattern = "seqtab."))
