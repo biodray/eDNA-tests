@@ -371,14 +371,17 @@ cat("Graphics done!", "\n-------------------------\n",
 
 FastQC(files = list.files(get.value("raw_unz_rename.path"), full.names = T), exe = "fastqc")
 
+
+
 # Try to run fastqc
 folder <- "_FastQC"
 files <- list.files(get.value("raw_unz_rename.path"))[1]
 
 cmd <- paste("-o", folder, "/FastQC/_raw_reports/ ", sep="", paste("\"", files, "\" ", collapse="", sep="") )
 
-cmd <- paste("-o", get.value("result.FQraw.path"), sep=" ", paste("\"", list.files(get.value("raw_unz_rename.path"), full.names = T)[1], "\" ", collapse="", sep="") )
-
+cmd <- paste("--outdir", get.value("result.FQraw.path"), list.files(get.value("raw_unz_rename.path"), full.names = T)[1])
+cmd <- paste("--outdir", get.value("result.FQraw.path"), list.files(get.value("raw_unz_rename.path"), full.names = T))
+cmd <- paste("-o", get.value("result.FQraw.path"), list.files(get.value("raw_unz_rename.path"), full.names = T))
 
 system2("fastqc", cmd)
 
