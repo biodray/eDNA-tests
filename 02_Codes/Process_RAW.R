@@ -368,30 +368,13 @@ cat("Graphics done!", "\n-------------------------\n",
     file=get.value("RAW.log"), 
     append = T, sep = "\n")
 
+# FastQC
 
-FastQC(files = list.files(get.value("raw_unz_rename.path"), full.names = T), exe = "fastqc")
-
-
-
-# Try to run fastqc
-folder <- "_FastQC"
-files <- list.files(get.value("raw_unz_rename.path"))[1]
-
-cmd <- paste("-o", folder, "/FastQC/_raw_reports/ ", sep="", paste("\"", files, "\" ", collapse="", sep="") )
+#FastQC(files = list.files(get.value("raw_unz_rename.path"), full.names = T), exe = "fastqc")
 
 cmd <- paste("--outdir", get.value("result.FQraw.path"), list.files(get.value("raw_unz_rename.path"), full.names = T)[1])
-cmd <- paste("--outdir", get.value("result.FQraw.path"), list.files(get.value("raw_unz_rename.path"), full.names = T))
-cmd <- paste("-o", get.value("result.FQraw.path"), list.files(get.value("raw_unz_rename.path"), full.names = T))
-
 system2("fastqc", cmd)
 
-# Try to move FastQ files
-
-cmd <- paste(file.path(get.value("raw_unz_rename.path"), "FastQC" ), file.path(get.value("result.Q.path"), "FastQC" ))
-
-
-
-system2("mv", cmd)
 
 
 # DADA2: raw to ASV ------------------------------------------------------------
