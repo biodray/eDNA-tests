@@ -22,6 +22,11 @@ library(ggpubr) # on github - for nice graphs
 library(dada2); packageVersion("dada2") # Faire mettre cette info dans le log
 library(JAMP)
 
+#if(!require(devtools)) install.packages("devtools")
+#devtools::install_github("kassambara/fastqcr")
+
+library(fastqcr)
+
 library(Biostrings)
 
 # Internal functions
@@ -394,29 +399,18 @@ if(get_os() == "os"){ # to run only on os and not windows
 #       qc.dir = get.value("raw_unz_rename.path"),
 #       threads = 4)
 
+qc.12s.res  <- qc_JAMP_sum(list.files(get.value("result.FQraw.path") %>% mixedsort(), pattern = "fastqc.zip", full.names = T) %>% str_subset(pattern = "12s"))
+qc.cytB.res <- qc_JAMP_sum(list.files(get.value("result.FQraw.path") %>% mixedsort(), pattern = "fastqc.zip", full.names = T) %>% str_subset(pattern = "cytB"))
 
-if(!require(devtools)) install.packages("devtools")
-devtools::install_github("kassambara/fastqcr")
+names(qc.12s.res)
+names(qc.cytB.res)
 
-library(fastqcr)
+qc_JAMP_plot(qc.12s.res$summary, file = file.path(get.value("result.Q.path"),"FastQC_12s_summary.pdf" ))
+qc_JAMP_plot(qc.cytB.res$summary, file = file.path(get.value("result.Q.path"),"FastQC_cytB_summary.pdf" ))
 
-qc.dir <- system.file("fastqc_results", package = "fastqcr")
+# Write the result somewhere
+# write.csv(exp, paste(folder, "/FastQC/stats.csv", sep=""))
 
-list.files(qc.dir)
-
-qc <- qc_aggregate(get.value("result.FQraw.path"))
-
-list.files(get.value("result.FQraw.path"))
-
-summary(qc)
-qc_stats(qc)
-
-qc_fails(qc)
-qc_warns(qc)
-
-qc_problems(qc)
-
-qc_read()
 
 # DADA2: raw to ASV ------------------------------------------------------------
 
