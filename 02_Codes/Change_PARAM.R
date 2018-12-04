@@ -68,6 +68,7 @@ add.param(PARAM) <- c("Raw.log", paste(get.value("log.path"),"Process_RAW.log.tx
 # Data --------------------------------------------------------------------
 
 add.param(PARAM) <- c("Qplot.RAW.data", paste(get.value("result.data.path"),"Qplot.RAW.data", sep = "/"))
+add.param(PARAM) <- c("FastQC.data", paste(get.value("result.data.path"),"FastQC.data", sep = "/"))
 add.param(PARAM) <- c("Qplot.FILT.data", paste(get.value("result.data.path"),"Qplot.FILT.data", sep = "/"))
 
 

@@ -18,6 +18,7 @@ library(tidyverse) # for data manipulation
 library(readxl)
 
 library(ggpubr) # on github - for nice graphs
+#devtools::install_github("kassambara/ggpubr")
 
 library(dada2); packageVersion("dada2") # Faire mettre cette info dans le log
 library(JAMP)
@@ -35,8 +36,6 @@ for(i in 1:length( list.files("./03_Functions") )){
 }
 
 
-
-getwd()
 # Data --------------------------------------------------------------------
 
 get.value("info.path")
@@ -380,15 +379,12 @@ cat("Graphics done!", "\n-------------------------\n",
 
 # FastQC
 
-
-
-if(get_os() == "os"){ # to run only on os and not windows
+if(get_os() %in% c("os","linux")){ # to run only on os and not windows
 
   cmd <- paste("--outdir", get.value("result.FQraw.path"), list.files(get.value("raw_unz_rename.path"), full.names = T))
   system2("fastqc", cmd)
   
 } else {cat("Cannot perform FastQC on windows -- sorry!!")}
-
 
 ##from JAMP
 #FastQC(files = list.files(get.value("raw_unz_rename.path"), full.names = T), exe = "fastqc")
@@ -408,21 +404,22 @@ names(qc.cytB.res)
 qc_JAMP_plot(qc.12s.res$summary, file = file.path(get.value("result.Q.path"),"FastQC_12s_summary.pdf" ))
 qc_JAMP_plot(qc.cytB.res$summary, file = file.path(get.value("result.Q.path"),"FastQC_cytB_summary.pdf" ))
 
+
+save(file = get.value("FastQC.data"), 
+     list = c("qc.12s.res" , "qc.cytB.res"))
+
 # Write the result somewhere
 # write.csv(exp, paste(folder, "/FastQC/stats.csv", sep=""))
 
 
 # DADA2: raw to ASV ------------------------------------------------------------
 
+
 #all.files <-  add.filt.files(LOCI = c("12s", "cytB"), PATH = filt_dada2.path, FILE.LS = all.files) 
 
 #str(all.files)
 
 # Filtrage en soi
-
-Amorces %>% filter(Locus == "12s") %>% pull(Amorce) %>% nchar()
-Amorces %>% filter(Locus == "cytB") %>% pull(Amorce) %>% nchar()
-
 # Real filtering
 
 # function to add filt names
@@ -433,33 +430,80 @@ filt.names <- function(files){
   new.files
 }
 
+cut.names <- function(files){
+  new.files <- files %>% str_replace(".fastq", "_cutadapt.fastq") %>%
+    str_replace(get.value("filt_dada2.path"), get.value("filt_cutadapt.path"))
+    new.files
+}
 
 filter.12s.summary <- filterAndTrim(fwd = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R1"),
                                           filt = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R1") %>% filt.names(),
                                           rev = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R2"),
                                           filt.rev = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R2") %>% filt.names(),
                                           truncQ=10, # minimum Q score, 10 = 90% base call accuracy
-                                          truncLen = c(100,100), # Taille min/max des reads
+                                          truncLen = c(0,0), # Taille min/max des reads
                                           trimLeft= c(0, 0), # Je vais les enlever avec cutadapt 
+                                          maxLen = c(Inf,Inf),
+                                          minLen = c(100,100), # after trimming and truncation
                                           maxEE=c(1,1),
                                           #orient.fwd = c("ACTGG"), # debut de l'amorce F
                                           compress = TRUE,
                                           multithread=FALSE, # TRUE on linux
                                           verbose = TRUE) 
 
+
 filter.cytB.summary <- filterAndTrim(fwd = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R1"),
                                      filt = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R1") %>% filt.names(),
                                      rev = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R2"),
                                      filt.rev = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R2") %>% filt.names(),
-                                     truncQ=10, # minimum Q score, 10 = 90% base call accuracy
-                                     truncLen = c(100,100), # Taille min/max des reads
-                                     trimLeft= c(35, 34), # Enlever les seq des amorces
-                                     maxEE=c(1,1),
+                                     truncLen = c(0,0), # Taille min/max des reads
+                                     trimLeft= c(0, 0), # Je vais les enlever avec cutadapt 
+                                     maxLen = c(Inf,Inf),
+                                     minLen = c(100,100), # after trimming and truncation
+                                     maxEE=c(1,1),   
                                      compress = TRUE,
                                      multithread=FALSE, # TRUE on linux
                                      verbose = TRUE) 
 
 # Add a cut adapt stuff
+
+
+Amorces %>% filter(Locus == "12s") %>% pull(Amorce) 
+Amorces %>% filter(Locus == "cytB") %>% pull(Amorce) 
+
+get.value("filt_cutadapt.path")
+
+# l'intégrer plus tard dans le code ....
+# car j'ai besoin de garder le même N reads avant/après ... voir comment trim le fait.
+
+#F - 12S
+cutadapt.cmd.12s.F <- paste("-g ^ACTGGGATTAGATACCCC -o", 
+                            list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "12s") %>% str_subset("R1") %>% cut.names(), 
+                            list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "12s") %>% str_subset("R1"), 
+                            "--discard-untrimmed", 
+                            "--report=minimal",
+                            sep = " ") # forward adapter
+
+#F - CYTB
+cutadapt.cmd.cytB.F <- paste("-g ^AAAAAGCTTCCATCCAACATCTCAGCATGATGAAA -o", 
+                            list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "cytB") %>% str_subset("R1") %>% cut.names(), 
+                            list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "cytB") %>% str_subset("R1"), 
+                            "--discard-untrimmed", 
+                            "--report=minimal", 
+                            sep = " ") # forward adapter
+
+
+cmd2
+
+for (i in 1:length(cmd1)){
+  system2("cutadapt", cutadapt.cmd.12s.F[i], stdout="", stderr="") # to R console
+  #cat(cmd1[1], sep = "\n")  
+}
+
+files_to_delete <- c(files_to_delete, new_names)
+
+
+
 
 cat(paste0("\n Correlation between 12S and cytB reads after DADA2 filtration : ",
     round(cor(filter.12s.summary[,"reads.out"], filter.cytB.summary[,"reads.out"], method = "spearman"),2)

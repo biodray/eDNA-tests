@@ -14,4 +14,5 @@
 "Sample.xl";"./00_Data/00_FileInfos/DB_Echantillons.xlsx"
 "Raw.log";"./04_Log/Process_RAW.log.txt"
 "Qplot.RAW.data";"./01_Results/01_data/Qplot.RAW.data"
+"FastQC.data";"./01_Results/01_data/FastQC.data"
 "Qplot.FILT.data";"./01_Results/01_data/Qplot.FILT.data"

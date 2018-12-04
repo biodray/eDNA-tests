@@ -13,8 +13,10 @@ library(tidyverse)
 library(readxl)
 
 # Internal functions
-source(file.path("./03_Functions",  list.files("./03_Functions")))
-
+# Internal functions
+for(i in 1:length( list.files("./03_Functions") )){
+  source(file.path("./03_Functions",  list.files("./03_Functions")[i]))  
+}
 
 # Data --------------------------------------------------------------------
 
