@@ -113,7 +113,13 @@ add_species <- function(fn, fn.new = NULL, verbose = FALSE, REF = NULL){
       NAMES3.int <- REF %>% filter(Espece_initial == x) %>% 
                       select(Espece) %>% 
                       pull() %>% 
-                      unique() 
+                      unique()
+      if(length(NAMES3.int)!=1){
+        NAMES3.int <- x
+        cat("no ref for ", x, "\n", sep="")
+      }
+      
+      
       NAMES3 <- c(NAMES3, NAMES3.int)
     }
     
