@@ -37,10 +37,13 @@ add.param(PARAM) <- c("raw_unz.path", "./00_Data/01b_RawData_unzipped")
 add.param(PARAM) <- c("raw_unz_rename.path", "./00_Data/01c_RawData_unzipped_rename")
 
 add.param(PARAM) <- c("filt_dada2.path", "./00_Data/02a_Filtered_dada2")
-add.param(PARAM) <- c("filt_cutadapt.path", "./00_Data/02b_Filtered_cutadapt")
+
+add.param(PARAM) <- c("filt_usearch.merge.path", "./00_Data/03a_Merged_usearch")
+add.param(PARAM) <- c("filt_cutadapt.path", "./00_Data/03b_Cutadap")
+                      
 #add.param(PARAM) <- c("filt_JAMP.path", "./00_Data/02c_Filtered_JAMP")
 
-add.param(PARAM) <- c("ref.path", "./00_Data/03_RefSeq")
+add.param(PARAM) <- c("ref.path", "./00_Data/04_RefSeq")
 
 
 

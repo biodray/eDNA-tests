@@ -873,10 +873,60 @@ save(file = file.path(result.path, "Seqtab.data"),
 
 # library("JAMP")
 
+file1 <- list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names=T) %>% str_subset("R1")
+file2 <- file1 %>% str_replace("R1", "R2")
+new.file <- file1 %>% str_replace("01c_RawData_unzipped_rename", "03a_Merged_usearch") %>% 
+                      str_replace("_R1.fastq", "_merged.fastq")  
 
-#U_merge_PE(file1 = file.path(raw_unz.path,all.files[["12s.raw.files.R1"]]),  
-#           file2 = file.path(raw_unz.path,all.files[["12s.raw.files.R2"]]),
-#           exe = "C:\\Users\\BourretA\\Documents\\Programs\\USearch\\usearch11.0.667_win32.exe")
+for(x in 1:length(file1)){
+  
+  print(file1[x])
+  
+  cmd <- paste("-fastq_mergepairs", file1[x], 
+               "-reverse", file2[x],  
+               "-fastqout", new.file[x], 
+               "-report", new.file[x] %>% str_replace("/03a_Merged_usearch/","/03a_Merged_usearch/log/") %>% str_replace("_merged.fastq", "_log.txt"),
+               "-fastq_maxdiffs", "99", 
+               "-fastq_pctid", "75", 
+               "-fastq_trunctail",  "0",
+               "-fastq_minovlen", "16", 
+               sep=" ")
+  
+  system2("usearch", cmd, stdout=F, stderr=F)  
+  
+}
+
+
+
+
+# cut adapt
+
+cutadapt.F.cmd <- paste("-g ^ACTGGGATTAGATACCCC -o", 
+                            list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "12s") %>% str_subset("R1") %>% cut.names(), 
+                            list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "12s") %>% str_subset("R1"), 
+                            "--discard-untrimmed", 
+                            "--report=minimal",
+                            sep = " ") # forward adapter
+
+cmd1 <- paste("-g ", if(anchoring){"^"}, fw, " -o ", folder, "/_data/temp.txt \"", files, "\"", " -f ", if(fastq){"fastq"}else{"fasta"}, " --discard-untrimmed", sep="") # forward adapter
+cmd2 <- paste("-a ", rw, if(anchoring){"$"}," -o \"", new_names, "\" ", folder, "/_data/temp.txt -f ", if(fastq){"fastq"}else{"fasta"}, " --discard-untrimmed", sep="") #rverse adapter
+
+
+# trimm primers
+Cutadapt(forward="ACTGGGATTAGATACCCC", # mlCOIintF
+         reverse="TAGAACAGGCTCCTCTAG", LDist=T) # jgHCO2198
+
+
+# discard with non target length
+Minmax(min=(104-10), max=(104+10))
+
+
+# SRA = function to download directly from SRA
+
+# discard reads above 1 expected error
+U_max_ee(max_ee=1) # usearch
+
+
 
 
 #U_cluster_otus(files= file.path(raw_unz.path,all.files[["cytB.filt.files.R2.OK"]]), filter=0.01)
