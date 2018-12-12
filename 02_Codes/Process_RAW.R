@@ -11,24 +11,26 @@ start.time <- Sys.time()
 
 # Library -----------------------------------------------------------------
 
-library(gtools)    # for mixedsort
-library(stringr)   # for pattern detection
+# Data manipulation
 
-library(tidyverse) # for data manipulation
+library(tidyverse) # includes ggplot2 dplyr and stringr
+
+library(gtools)    # for mixedsort
 library(readxl)
 
-library(ggpubr) # on github - for nice graphs
+#library(devtools)
 #devtools::install_github("kassambara/ggpubr")
+library(ggpubr)    # on github - for nice graphs
 
-library(dada2); packageVersion("dada2") # Faire mettre cette info dans le log
-library(JAMP)
-
-#if(!require(devtools)) install.packages("devtools")
-#devtools::install_github("kassambara/fastqcr")
-
-library(fastqcr)
+# Fastq and fasta manipulation
 
 library(Biostrings)
+
+library(dada2); packageVersion("dada2") # Faire mettre cette info dans le log
+#library(JAMP) - I don't think this package is still necessary
+
+#devtools::install_github("kassambara/fastqcr")
+library(fastqcr)  # to read fastqc ressults
 
 # Internal functions
 for(i in 1:length( list.files("./03_Functions") )){
@@ -37,22 +39,6 @@ for(i in 1:length( list.files("./03_Functions") )){
 
 
 # Data --------------------------------------------------------------------
-
-get.value("info.path")
-
-get.value("raw.path")  
-get.value("raw_unz.path")   
-get.value("raw_unz_rename.path")
-
-get.value("ref.path")
-
-filt_dada2.path <- "./00_Data/02a_Filtered_dada2"
-filt_IBIS.path <- "./00_Data/02b_Filtered_IBIS"
-filt_JAMP.path  <- "./00_Data/02c_Filtered_JAMP"
-
-get.value("log.path")
-
-get.value("result.path")
 
 DataSample <- read_excel(get.value("Sample.xl"),sheet="DataSample",na="NA",guess_max=100000)
 DataSeq    <- read_excel(get.value("Sample.xl"),sheet="DataSeq",na="NA",guess_max=100000)
@@ -64,7 +50,6 @@ Amorces    <- read_excel(get.value("Sample.xl"),sheet="Amorces",na="NA",guess_ma
 DataSeq <- DataSeq %>% mutate (IbisID = paste0("p",Plaque,"-",Puit)) %>% 
   left_join(DataSample %>% select(SampleID, NomLac, CatSite), by = "SampleID")
 
-
 # Log
 
 if(file.exists(file.path(log.path, "Process_RAW.log.txt"))){
@@ -75,134 +60,51 @@ cat("\n-------------------------\n",
     "Process raw eDNA data\n",
     date(),
     "\n-------------------------\n", 
-    file=file.path(log.path, "Process_RAW.log.txt"), 
+    file=get.value("Raw.log"), 
     append = FALSE, sep = "\n")
 
+# Try a prompt message
 
-# Function to extract file list
+cat("What do you wnat")
 
-# list.raw.files <- function(LOCI, 
-#                            PATH, 
-#                            FRpattern = c("R1", "R2"), 
-#                            STARTpattern = "EP-",
-#                            ENDpattern = "_L001_R1_001.fastq"){
-#   
-#   # Create a list to return all values 
-#   res <- list()
-#   
-#   for(x in LOCI){
-#     # List all files based on loci name
-#     files.all <- list.files(PATH, pattern = x)
-#     
-#     # Divide F and R reads
-#     files.R1 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = FRpattern[1])])
-#     files.R2 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = FRpattern[2])])
-# 
-#     #
-#     names <- files.R1 %>% stringr::str_remove(pattern = STARTpattern) %>% 
-#                           stringr::str_remove(pattern = ENDpattern) %>% 
-#                           mixedsort()
-#     
-#     names <- sapply(stringr::strsplit(names, "_"), `[`, 1)
-#     
-#     # list names
-#     files.R1.ln <- paste0(x, ".raw.files.R1")
-#     files.R2.ln <- paste0(x, ".raw.files.R2")   
-#     names.ln    <- paste0(x, ".names")
-#     
-#     # Put restults in my list
-#     res[[files.R1.ln]] <- files.R1
-#     res[[files.R2.ln]] <- files.R2
-#     res[[names.ln]]    <- names
-#     
-#     
-#     
-#     if(!is.null(log.path)){
-#       cat(paste0(x, ": ", length(names), " files found in ", PATH),  
-#         file=file.path(log.path, "Process_RAW.log.txt"), 
-#         append = T, sep = "\n")
-#       
-#     }
-# 
-#     
-#   }
-#   
-#   if(!is.null(log.path)){
-#     cat("\n-------------------------\n",  
-#         file=file.path(log.path, "Process_RAW.log.txt"), 
-#         append = T, sep = "\n")
-#     
-#   }
-#   
-#   return(res)
-#   
-# }
-# 
-# # add filt path 
-# 
-# add.filt.files <- function(LOCI, 
-#                            PATH,
-#                            FILE.LS,
-#                            F.PATTERN = "_F_filt.fastq.gz", 
-#                            R.PATTERN = "_R_filt.fastq.gz"){
-#   
-#   # Create a list to return all values 
-#   for(x in LOCI){
-#     
-#     NAMES.LN <-  paste0(x, ".names")
-#     NAMES <- FILE.LS[[NAMES.LN]]
-#     
-#     # Divide F and R reads
-#     filt.Fs <- file.path(PATH, paste0(NAMES, F.PATTERN))
-#     filt.Rs <- file.path(PATH, paste0(NAMES, R.PATTERN))    
-#     
-#     # list names
-#     files.R1.ln <- paste0(x, ".filt.files.R1")
-#     files.R2.ln <- paste0(x, ".filt.files.R2")   
-#     
-#     # Put restults in my list
-#     FILE.LS[[files.R1.ln]] <- filt.Fs
-#     FILE.LS[[files.R2.ln]] <- filt.Rs
-#   }
-#   
-#   return(FILE.LS)
-#   
-# }
-# 
-# add.filt.OK.files <- function(LOCI, 
-#                               PATH,
-#                               FILE.LS,
-#                               F.PATTERN = "_F_filt.fastq.gz", 
-#                               R.PATTERN = "_R_filt.fastq.gz"){
-#   
-#   # Create a list to return all values 
-#   for(x in LOCI){
-#     
-#     # List all files based on loci name
-#     files.all <- list.files(PATH, pattern = x)
-#     
-#     # Divide F and R reads
-#     files.R1 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = F.PATTERN)])
-#     files.R2 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = R.PATTERN)])
-#     
-#     names <- files.R1 %>% stringr::str_remove(pattern =  F.PATTERN)
-#     
-#     # list names
-#     files.R1.ln <- paste0(x, ".filt.files.R1.OK")
-#     files.R2.ln <- paste0(x, ".filt.files.R2.OK")
-#     
-#     names.ln <- paste0(x, ".filt.names")
-#     
-#     # Put results in my list
-#     FILE.LS[[files.R1.ln]] <- files.R1
-#     FILE.LS[[files.R2.ln]] <- files.R2
-#     FILE.LS[[names.ln]]    <- names    
-#   }
-#   
-#   return(FILE.LS)
-#   
-# }
+switch(menu(choice = c("yes", "no"), title = "Do you want to erase the previous log files?", graphics = F) + 1,
+       cat("Nothing done\n"), 
+       { cat(1)
+         cat(1)
+         }, 
+       cat ("Not erased"))
 
+
+utils:::askYesNoWinDialog("Eahello", c("List letters", "List LETTERS"))
+
+askYesNo("Do you want to use askYesNo?")
+
+# Functions ---------------------------------------------------------------
+
+# Function to ugrade plotQualityProfiles
+
+plotQplus <- function(files, locus, pattern) {
+  graph.ls <- list()
+  
+  for(l in locus){
+    print(l)
+    
+    files.red <- files %>% str_subset(l)
+    
+    for(p in pattern){
+      
+      files.red2 <- files.red %>% str_subset(p)      
+      print(p)
+      
+      graph <- plotQualityProfile(files.red2, aggregate = T)
+      
+      graph <- graph + labs(x = "Base pair")
+      
+      graph.ls[[paste(l,p,sep="-")]] <- graph 
+    }
+  }
+  return(graph.ls)  
+}   
 
 # L'arranger pour enlever le merger
 
@@ -247,6 +149,8 @@ get_trackDADA <- function(SUMMARY, MERGER=NULL, SEQTAB, RAW.NAME, FILT.NAMES){
   
 }
 
+# To work with IBIS data - unnecessary now
+
 makeSeqTabFromScratch <- function(files, name, path=""){
   files.seq <- list()
   for(x in 1:length(files)){
@@ -268,47 +172,9 @@ makeSeqTabFromScratch <- function(files, name, path=""){
   return(seqtab)
 }
 
-# Quality assesment - RAW ------------------------------------------------------
+# 1. Quality assesment - RAW (fastqc + dada2) ------------------------------------------------------
 
-#list.raw.files <- function(LOCI, 
-#                           PATH, 
-#                           FRpattern = c("R1", "R2"), 
-#                           STARTpattern = "EP-",
-#                           ENDpattern = "_L001_R1_001.fastq")
-
-#all.files <- list.raw.files(LOCI = c("12s", "cytB"), 
-#                            PATH = get.value("raw_unz_rename.path"),
-#                            FRpattern = c("R1", "R2"), 
-#                            STARTpattern = "",
-#                            ENDpattern = "R1.fastq")
-
-#str(all.files)
-
-
-
-plotQplus <- function(files, locus, pattern) {
-  graph.ls <- list()
-  
-  for(l in locus){
-    print(l)
-    
-    files.red <- files %>% str_subset(l)
-    
-    for(p in pattern){
-      
-      files.red2 <- files.red %>% str_subset(p)      
-      print(p)
-      
-      graph <- plotQualityProfile(files.red2, aggregate = T)
-      
-      graph <- graph + labs(x = "Base pair")
-      
-      graph.ls[[paste(l,p,sep="-")]] <- graph 
-    }
-  }
-  return(graph.ls)  
-}   
-
+# Small code to no redo this part if has been previously done
 
 if(file.exists(get.value("Qplot.RAW.data"))){
   load(get.value("Qplot.RAW.data"))
@@ -324,7 +190,7 @@ if(file.exists(get.value("Qplot.RAW.data"))){
        list = c("graph.tot.ls" , "graph.sample.ls"))
 }
 
-# devrait peut-être aller dans un autre script
+# devrait peut-être aller dans un autre script - J'aimerais garder ce script au min
 names(graph.tot.ls)
 names(graph.sample.ls)
 
@@ -412,7 +278,7 @@ save(file = get.value("FastQC.data"),
 # write.csv(exp, paste(folder, "/FastQC/stats.csv", sep=""))
 
 
-# RAW to FILT (cutadapt + dada2) ------------------------------------------------------------
+# 2. RAW to FILT (cutadapt + dada2) ------------------------------------------------------------
 
 # Retry to add cutadapt
 
@@ -637,7 +503,7 @@ ggsave(filename = "QualityPlotSample.filt.png",
        width = 8, height = 8, units = "in")
 
 
-# FILT to ASV (denoise with DADA2) --------------------------------------------------
+# 3. FILT to ASV (denoise with DADA2) --------------------------------------------------
 
 # Calcul du taux d'erreur (DADA2)
 
@@ -914,24 +780,7 @@ cat("\n-------------------------\n",
 
 
 
-# IBIS: filtered reads (MOTHUR) to ASV ------------------------------------
 
-# 
-# 
-# all.files[["IBIS.files"]] <- list.files(filt_IBIS.path, pattern = "stability.trim.contigs.good.unique.good.filter.unique.precluster.fn.0.06.rep.pick")
-# 
-# 
-# all.files[["IBIS.files.names"]] <- all.files[["IBIS.files"]] %>% str_remove(pattern = "EP_") %>% 
-#                                    str_remove(pattern = "_stability.trim.contigs.good.unique.good.filter.unique.precluster.fn.0.06.rep.pick.fasta") %>% 
-#                                    stringr::str_replace_all("_", "-")
-# 
-# 
-# seqtab.12s.IBIS <-  makeSeqTabFromScratch(files = all.files[["IBIS.files"]],
-#                                           name = all.files[["IBIS.files.names"]],
-#                                           path = filt_IBIS.path) 
-# 
-# save(file = file.path(result.path, "Seqtab.data"), 
-#      list = ls(pattern = "seqtab."))
 
 
 # 4. FILT to OTU (usearch inspired by JAMP)-------------------------------------------------------------
@@ -1183,6 +1032,24 @@ OTU.table.12S <- make.OTU.table(file1, fasta1)
 
 # then save OTU table
 
+# IBIS: filtered reads (MOTHUR) to ASV ------------------------------------
+
+# 
+# 
+# all.files[["IBIS.files"]] <- list.files(filt_IBIS.path, pattern = "stability.trim.contigs.good.unique.good.filter.unique.precluster.fn.0.06.rep.pick")
+# 
+# 
+# all.files[["IBIS.files.names"]] <- all.files[["IBIS.files"]] %>% str_remove(pattern = "EP_") %>% 
+#                                    str_remove(pattern = "_stability.trim.contigs.good.unique.good.filter.unique.precluster.fn.0.06.rep.pick.fasta") %>% 
+#                                    stringr::str_replace_all("_", "-")
+# 
+# 
+# seqtab.12s.IBIS <-  makeSeqTabFromScratch(files = all.files[["IBIS.files"]],
+#                                           name = all.files[["IBIS.files.names"]],
+#                                           path = filt_IBIS.path) 
+# 
+# save(file = file.path(result.path, "Seqtab.data"), 
+#      list = ls(pattern = "seqtab."))
 
 # END of the script -------------------------------------------------------
 
