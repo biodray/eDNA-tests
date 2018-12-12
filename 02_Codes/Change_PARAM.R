@@ -44,10 +44,13 @@ add.param(PARAM) <- c("filt_dada2.path", "./00_Data/02b_Filtered_dada2")
 add.param(PARAM) <- c("ASV.dada2.path", "./00_Data/03_ASV")
 
 add.param(PARAM) <- c("filt_merge.path", "./00_Data/04a_Merged_usearch")
-add.param(PARAM) <- c("filt_derep.path", "./00_Data/04b_Derep_vsearch")
-add.param(PARAM) <- c("filt_derep.1file.path", "./00_Data/04c_Derep_united_vsearch")
-add.param(PARAM) <- c("OTU.usearch", "./00_Data/04d_OTU")
-add.param(PARAM) <- c("Compare.OTU.usearch", "./00_Data/04e_Compared_OTU")
+add.param(PARAM) <- c("filt_min.path", "./00_Data/04b_Min_cutadapt")
+add.param(PARAM) <- c("filt_min.log", "./00_Data/04b_Min_cutadapt/log")
+add.param(PARAM) <- c("filt_derep.path", "./00_Data/04c_Derep_vsearch")
+add.param(PARAM) <- c("filt_derep.1file.path", "./00_Data/04d_Derep_united_vsearch")
+add.param(PARAM) <- c("OTU.usearch", "./00_Data/04e_OTU")
+add.param(PARAM) <- c("Compare.OTU.usearch", "./00_Data/04f_Compared_OTU")
+add.param(PARAM) <- c("Compare.OTU.usearch.log", "./00_Data/04e_Compared_OTU/log")
 
 #add.param(PARAM) <- c("filt_maxEE.usearch.path", "./00_Data/04b_maxEE_usearch")
 
@@ -64,6 +67,8 @@ add.param(PARAM) <- c("result.path", "./01_Results")
 add.param(PARAM) <- c("result.data.path", "./01_Results/01_data")
 add.param(PARAM) <- c("result.Q.path", "./01_Results/02_ReadsQ")
 add.param(PARAM) <- c("result.FQraw.path", "./01_Results/02_ReadsQ/FastQC_Raw")
+add.param(PARAM) <- c("result.OTUtables", "./01_Results/03_OTUtables")
+
 add.param(PARAM) <- c("log.path", "./04_Log")
 
 

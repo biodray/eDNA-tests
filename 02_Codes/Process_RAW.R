@@ -934,7 +934,7 @@ cat("\n-------------------------\n",
 #      list = ls(pattern = "seqtab."))
 
 
-# FILT to OTU (usearch with JAMP)-------------------------------------------------------------
+# 4. FILT to OTU (usearch inspired by JAMP)-------------------------------------------------------------
 
 # Umerge
 
@@ -964,20 +964,39 @@ for(x in 1:length(file1)){
 
 # Add a min - max because some with 35 pb!!
 
+files <- list.files(get.value("filt_merge.path"), pattern = "12s", full.names=T)
+new.files <- files %>% str_replace(get.value("filt_merge.path"), get.value("filt_min.path")) %>% 
+                       str_replace(".fastq", "_min.fastq")
 
-# Test
-files <- c(list.files(get.value("filt_merge.path"), pattern = "12s", full.names = T),
-           list.files(get.value("filt_dada2.path"), pattern = "cytB", full.names = T)
-           )
-new.files <-  files %>% str_replace(get.value("filt_merge.path"), get.value("filt_derep.path")) %>% 
-                        str_replace(get.value("filt_dada2.path"), get.value("filt_derep.path")) %>% 
-                        str_replace(".fastq","_derep.fasta")
+for(x in 1:length(files)){
+  
+  print(files[x])
+  
+  cmd <- paste(files[x],
+               "-o", new.files[x], 
+               #"-f", "fastq",  
+               "-m", 100, # for minimum
+               #"-M", x, # for maximu,
+               sep=" ")
+  
+  A <- system2("cutadapt", cmd, stdout=T, stderr=T)  
+  
+  # save a log
+  cat(file = new.files[x] %>% str_replace(get.value("filt_min.path"), get.value("filt_min.log")) %>% 
+        str_replace(".fastq","_log.txt"),
+      A, # what to put in my file
+      append= F, sep = "\n")
 
-#U_cluster_otus(files= files, filter=0.01)
-
-# Doesn't work - I will do it by hand once again.
+}
 
 # Dereplicated files with vsearch
+
+files <- c(list.files(get.value("filt_min.path"), pattern = "12s", full.names = T),
+           list.files(get.value("filt_dada2.path"), pattern = "cytB", full.names = T)
+)
+new.files <-  files %>% str_replace(get.value("filt_min.path"), get.value("filt_derep.path")) %>% 
+  str_replace(get.value("filt_dada2.path"), get.value("filt_derep.path")) %>% 
+  str_replace(".fastq","_derep.fasta")
 
 for(x in 1:length(files)){
   print(files[x])
@@ -1063,105 +1082,106 @@ for(x in 1:length(files)){
 
 # Compare OTU to derep
 
+usearch_global <- function(files, new.files, DB) {
+ 
+  for(x in 1:length(files)){
+  
+  print(files[x])
+  
+  cmd <- paste("-usearch_global", files[x], 
+               "-db", DB, 
+               "-strand", "plus",  
+               "-id", "0.97",
+               "-blast6out", new.files[x], 
+               "-maxhits", "1", 
+               "-maxaccepts", "1", 
+               "-maxrejects", "32",
+               sep=" ")
+  
+  A <- system2("usearch", cmd, stdout=T, stderr=T)
+  
+  # Write a log file for each clusters
+  cat(file = new.files[x] %>% str_replace(get.value("Compare.OTU.usearch"), get.value("Compare.OTU.usearch.log")) %>% 
+                   str_replace(".txt","_log.txt"),
+      paste("usearch", cmd), "\n", A,
+      append= F, sep = "\n")
+  } 
+  
+} # fin de la fonction
+
 # 12S
 
-files <- list.files(get.value("filt_derep.path"), pattern = "12s", full.names = T)
-new.files <- files %>% str_replace(get.value("filt_derep.path"),get.value("Compare.OTU.usearch")) %>%  
-                       str_replace(".fasta",".txt")
+usearch_global(files = list.files(get.value("filt_derep.path"), pattern = "12s", full.names = T), 
+               new.files = list.files(get.value("filt_derep.path"), pattern = "12s", full.names = T) %>% str_replace(get.value("filt_derep.path"),get.value("Compare.OTU.usearch")) %>%  
+                 str_replace(".fasta",".txt"), 
+               DB = list.files(get.value("OTU.usearch"), pattern = "12s", full.names = T) %>% str_subset("OTU.fasta"))
 
+
+# CytB.R1
+
+usearch_global(files = list.files(get.value("filt_derep.path"), pattern = "cytB", full.names = T) %>% str_subset("R1"), 
+               new.files = list.files(get.value("filt_derep.path"), pattern = "cytB", full.names = T) %>% str_subset("R1") %>% 
+                           str_replace(get.value("filt_derep.path"),get.value("Compare.OTU.usearch")) %>%  
+                           str_replace(".fasta",".txt"), 
+               DB = list.files(get.value("OTU.usearch"), pattern = "cytB.R1", full.names = T) %>% str_subset("OTU.fasta"))
+
+# CytB.R2
+
+usearch_global(files = list.files(get.value("filt_derep.path"), pattern = "cytB", full.names = T) %>% str_subset("R2"), 
+               new.files = list.files(get.value("filt_derep.path"), pattern = "cytB", full.names = T) %>% 
+                           str_subset("R2") %>% str_replace(get.value("filt_derep.path"),get.value("Compare.OTU.usearch")) %>%  
+                           str_replace(".fasta",".txt"), 
+               DB = list.files(get.value("OTU.usearch"), pattern = "cytB.R2", full.names = T) %>% str_subset("OTU.fasta"))
+
+
+# Create a OTU table
+
+
+make.OTU.table <- function(files, fasta){
+
+# ne pas prendre les fichiers vides
+empty <- file.info(files)$size==0
+
+files <- files[!empty]
+
+tab <- data.frame(ID = character())
 
 for(x in 1:length(files)){
-  
-  print(files[x])
-  
-  cmd <- paste("-usearch_global", files[x], 
-               "-db", list.files(get.value("OTU.usearch"), pattern = "12s", full.names = T) %>% str_subset("OTU.fasta"), 
-               "-strand", "plus",  
-               "-id", "0.97",
-               "-blast6out", new.files[x], 
-               "-maxhits", "1", 
-               "-maxaccepts", "1", 
-               "-maxrejects", "32",
-               sep=" ")
+data <- read.csv(files[x], sep="\t", header = F, stringsAsFactors = F,
+                 col.names = c("query", "otu", "ident","length","mism","gap","qstart","qend","target_s","target_e","e.value","bitscore"))
 
-  system2("usearch", cmd, stdout=T, stderr=T)
+data <- data %>% mutate(abund = sapply(str_split(query, pattern = "="), `[`,2),
+                        abund = as.numeric(as.character(abund)))
+
+temp <- data %>% group_by(otu) %>% summarise(Sum = sum(abund))
+names(temp) <- c("ID", files[x] %>% str_remove(get.value("Compare.OTU.usearch")) %>% 
+                                    str_remove("/") %>% str_remove(".txt"))
+
+tab <- tab %>% full_join(temp, by = "ID")
 
 }
 
-# cytb.R1
+tab[is.na(tab)] <- 0
 
-files <- list.files(get.value("filt_derep.path"), pattern = "cytB", full.names = T) %>% str_subset("R1")
-new.files <- files %>% str_replace(get.value("filt_derep.path"),get.value("Compare.OTU.usearch")) %>%  
-  str_replace(".fasta",".txt")
+tab <- tab[mixedorder(tab$ID),]
+tab[,1:2]
 
-for(x in 1:length(files)){
-  
-  print(files[x])
-  
-  cmd <- paste("-usearch_global", files[x], 
-               "-db", list.files(get.value("OTU.usearch"), pattern = "cytB.R1", full.names = T) %>% str_subset("OTU.fasta"), 
-               "-strand", "plus",  
-               "-id", "0.97",
-               "-blast6out", new.files[x], 
-               "-maxhits", "1", 
-               "-maxaccepts", "1", 
-               "-maxrejects", "32",
-               sep=" ")
-  
-  system2("usearch", cmd, stdout=T, stderr=T)
-  
+DNA <- readDNAStringSet(fasta)
+
+row.names(tab) <- as.character(DNA)
+
+return(tab)
+
 }
 
-# cytb.R2
+file1 <- list.files(get.value("Compare.OTU.usearch"), pattern = "12s", full.names = T)
+fasta1 <- list.files(get.value("OTU.usearch"), pattern = "_OTU.fasta", full.names = T) %>% str_subset("12s")
 
-files <- list.files(get.value("filt_derep.path"), pattern = "cytB", full.names = T) %>% str_subset("R2")
-new.files <- files %>% str_replace(get.value("filt_derep.path"),get.value("Compare.OTU.usearch")) %>%  
-  str_replace(".fasta",".txt")
+OTU.table.12S <- make.OTU.table(file1, fasta1)
 
-for(x in 1:length(files)){
-  
-  print(files[x])
-  
-  cmd <- paste("-usearch_global", files[x], 
-               "-db", list.files(get.value("OTU.usearch"), pattern = "cytB.R2", full.names = T) %>% str_subset("OTU.fasta"), 
-               "-strand", "plus",  
-               "-id", "0.97",
-               "-blast6out", new.files[x], 
-               "-maxhits", "1", 
-               "-maxaccepts", "1", 
-               "-maxrejects", "32",
-               sep=" ")
-  
-  system2("usearch", cmd, stdout=T, stderr=T)
-  
-}
+# faire la suite pour le cytB
 
-empty <- file.info(new.files)$size==0
-
-new.files[!empty]
-
-list.files(get.value("filt_derep.1file.path"), full.length = T)
-
-getwd()
-
-#Sys.setenv(PATH = paste(Sys.getenv("PATH"), path_to_usearch, sep= .Platform$path.sep))
-
-
-# Add a cut adapt stuff
-
-
-Amorces %>% filter(Locus == "12s") %>% pull(Amorce)
-Amorces %>% filter(Locus == "cytB") %>% pull(Amorce) 
-
-get.value("filt_cutadapt.path")
-
-# l'intégrer plus tard dans le code ....
-# car j'ai besoin de garder le même N reads avant/après ... voir comment trim le fait.
-
-
-
-
-
+# then save OTU table
 
 
 # END of the script -------------------------------------------------------
