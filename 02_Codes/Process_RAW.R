@@ -73,135 +73,135 @@ if(file.exists(file.path(log.path, "Process_RAW.log.txt"))){
 
 cat("\n-------------------------\n", 
     "Process raw eDNA data\n",
-     date(),
+    date(),
     "\n-------------------------\n", 
-     file=file.path(log.path, "Process_RAW.log.txt"), 
-     append = FALSE, sep = "\n")
+    file=file.path(log.path, "Process_RAW.log.txt"), 
+    append = FALSE, sep = "\n")
 
 
 # Function to extract file list
-  
-list.raw.files <- function(LOCI, 
-                           PATH, 
-                           FRpattern = c("R1", "R2"), 
-                           STARTpattern = "EP-",
-                           ENDpattern = "_L001_R1_001.fastq"){
-  
-  # Create a list to return all values 
-  res <- list()
-  
-  for(x in LOCI){
-    # List all files based on loci name
-    files.all <- list.files(PATH, pattern = x)
-    
-    # Divide F and R reads
-    files.R1 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = FRpattern[1])])
-    files.R2 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = FRpattern[2])])
 
-    #
-    names <- files.R1 %>% stringr::str_remove(pattern = STARTpattern) %>% 
-                          stringr::str_remove(pattern = ENDpattern) %>% 
-                          mixedsort()
-    
-    names <- sapply(stringr::strsplit(names, "_"), `[`, 1)
-    
-    # list names
-    files.R1.ln <- paste0(x, ".raw.files.R1")
-    files.R2.ln <- paste0(x, ".raw.files.R2")   
-    names.ln    <- paste0(x, ".names")
-    
-    # Put restults in my list
-    res[[files.R1.ln]] <- files.R1
-    res[[files.R2.ln]] <- files.R2
-    res[[names.ln]]    <- names
-    
-    
-    
-    if(!is.null(log.path)){
-      cat(paste0(x, ": ", length(names), " files found in ", PATH),  
-        file=file.path(log.path, "Process_RAW.log.txt"), 
-        append = T, sep = "\n")
-      
-    }
-
-    
-  }
-  
-  if(!is.null(log.path)){
-    cat("\n-------------------------\n",  
-        file=file.path(log.path, "Process_RAW.log.txt"), 
-        append = T, sep = "\n")
-    
-  }
-  
-  return(res)
-  
-}
-
-# add filt path 
-
-add.filt.files <- function(LOCI, 
-                           PATH,
-                           FILE.LS,
-                           F.PATTERN = "_F_filt.fastq.gz", 
-                           R.PATTERN = "_R_filt.fastq.gz"){
-  
-  # Create a list to return all values 
-  for(x in LOCI){
-    
-    NAMES.LN <-  paste0(x, ".names")
-    NAMES <- FILE.LS[[NAMES.LN]]
-    
-    # Divide F and R reads
-    filt.Fs <- file.path(PATH, paste0(NAMES, F.PATTERN))
-    filt.Rs <- file.path(PATH, paste0(NAMES, R.PATTERN))    
-    
-    # list names
-    files.R1.ln <- paste0(x, ".filt.files.R1")
-    files.R2.ln <- paste0(x, ".filt.files.R2")   
-    
-    # Put restults in my list
-    FILE.LS[[files.R1.ln]] <- filt.Fs
-    FILE.LS[[files.R2.ln]] <- filt.Rs
-  }
-  
-  return(FILE.LS)
-  
-}
-
-add.filt.OK.files <- function(LOCI, 
-                              PATH,
-                              FILE.LS,
-                              F.PATTERN = "_F_filt.fastq.gz", 
-                              R.PATTERN = "_R_filt.fastq.gz"){
-  
-  # Create a list to return all values 
-  for(x in LOCI){
-    
-    # List all files based on loci name
-    files.all <- list.files(PATH, pattern = x)
-    
-    # Divide F and R reads
-    files.R1 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = F.PATTERN)])
-    files.R2 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = R.PATTERN)])
-    
-    names <- files.R1 %>% stringr::str_remove(pattern =  F.PATTERN)
-    
-    # list names
-    files.R1.ln <- paste0(x, ".filt.files.R1.OK")
-    files.R2.ln <- paste0(x, ".filt.files.R2.OK")
-    
-    names.ln <- paste0(x, ".filt.names")
-    
-    # Put results in my list
-    FILE.LS[[files.R1.ln]] <- files.R1
-    FILE.LS[[files.R2.ln]] <- files.R2
-    FILE.LS[[names.ln]]    <- names    
-  }
-  
-  return(FILE.LS)
-  
-}
+# list.raw.files <- function(LOCI, 
+#                            PATH, 
+#                            FRpattern = c("R1", "R2"), 
+#                            STARTpattern = "EP-",
+#                            ENDpattern = "_L001_R1_001.fastq"){
+#   
+#   # Create a list to return all values 
+#   res <- list()
+#   
+#   for(x in LOCI){
+#     # List all files based on loci name
+#     files.all <- list.files(PATH, pattern = x)
+#     
+#     # Divide F and R reads
+#     files.R1 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = FRpattern[1])])
+#     files.R2 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = FRpattern[2])])
+# 
+#     #
+#     names <- files.R1 %>% stringr::str_remove(pattern = STARTpattern) %>% 
+#                           stringr::str_remove(pattern = ENDpattern) %>% 
+#                           mixedsort()
+#     
+#     names <- sapply(stringr::strsplit(names, "_"), `[`, 1)
+#     
+#     # list names
+#     files.R1.ln <- paste0(x, ".raw.files.R1")
+#     files.R2.ln <- paste0(x, ".raw.files.R2")   
+#     names.ln    <- paste0(x, ".names")
+#     
+#     # Put restults in my list
+#     res[[files.R1.ln]] <- files.R1
+#     res[[files.R2.ln]] <- files.R2
+#     res[[names.ln]]    <- names
+#     
+#     
+#     
+#     if(!is.null(log.path)){
+#       cat(paste0(x, ": ", length(names), " files found in ", PATH),  
+#         file=file.path(log.path, "Process_RAW.log.txt"), 
+#         append = T, sep = "\n")
+#       
+#     }
+# 
+#     
+#   }
+#   
+#   if(!is.null(log.path)){
+#     cat("\n-------------------------\n",  
+#         file=file.path(log.path, "Process_RAW.log.txt"), 
+#         append = T, sep = "\n")
+#     
+#   }
+#   
+#   return(res)
+#   
+# }
+# 
+# # add filt path 
+# 
+# add.filt.files <- function(LOCI, 
+#                            PATH,
+#                            FILE.LS,
+#                            F.PATTERN = "_F_filt.fastq.gz", 
+#                            R.PATTERN = "_R_filt.fastq.gz"){
+#   
+#   # Create a list to return all values 
+#   for(x in LOCI){
+#     
+#     NAMES.LN <-  paste0(x, ".names")
+#     NAMES <- FILE.LS[[NAMES.LN]]
+#     
+#     # Divide F and R reads
+#     filt.Fs <- file.path(PATH, paste0(NAMES, F.PATTERN))
+#     filt.Rs <- file.path(PATH, paste0(NAMES, R.PATTERN))    
+#     
+#     # list names
+#     files.R1.ln <- paste0(x, ".filt.files.R1")
+#     files.R2.ln <- paste0(x, ".filt.files.R2")   
+#     
+#     # Put restults in my list
+#     FILE.LS[[files.R1.ln]] <- filt.Fs
+#     FILE.LS[[files.R2.ln]] <- filt.Rs
+#   }
+#   
+#   return(FILE.LS)
+#   
+# }
+# 
+# add.filt.OK.files <- function(LOCI, 
+#                               PATH,
+#                               FILE.LS,
+#                               F.PATTERN = "_F_filt.fastq.gz", 
+#                               R.PATTERN = "_R_filt.fastq.gz"){
+#   
+#   # Create a list to return all values 
+#   for(x in LOCI){
+#     
+#     # List all files based on loci name
+#     files.all <- list.files(PATH, pattern = x)
+#     
+#     # Divide F and R reads
+#     files.R1 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = F.PATTERN)])
+#     files.R2 <- mixedsort(files.all[stringr::str_detect(files.all, pattern = R.PATTERN)])
+#     
+#     names <- files.R1 %>% stringr::str_remove(pattern =  F.PATTERN)
+#     
+#     # list names
+#     files.R1.ln <- paste0(x, ".filt.files.R1.OK")
+#     files.R2.ln <- paste0(x, ".filt.files.R2.OK")
+#     
+#     names.ln <- paste0(x, ".filt.names")
+#     
+#     # Put results in my list
+#     FILE.LS[[files.R1.ln]] <- files.R1
+#     FILE.LS[[files.R2.ln]] <- files.R2
+#     FILE.LS[[names.ln]]    <- names    
+#   }
+#   
+#   return(FILE.LS)
+#   
+# }
 
 
 # L'arranger pour enlever le merger
@@ -288,7 +288,7 @@ makeSeqTabFromScratch <- function(files, name, path=""){
 
 plotQplus <- function(files, locus, pattern) {
   graph.ls <- list()
-
+  
   for(l in locus){
     print(l)
     
@@ -298,11 +298,11 @@ plotQplus <- function(files, locus, pattern) {
       
       files.red2 <- files.red %>% str_subset(p)      
       print(p)
-    
+      
       graph <- plotQualityProfile(files.red2, aggregate = T)
-    
+      
       graph <- graph + labs(x = "Base pair")
-
+      
       graph.ls[[paste(l,p,sep="-")]] <- graph 
     }
   }
@@ -315,11 +315,11 @@ if(file.exists(get.value("Qplot.RAW.data"))){
   
 } else {
   graph.tot.ls   <- plotQplus(list.files(get.value("raw_unz_rename.path"), full.names = T),
-                      locus = c("12s", "cytB"), pattern = c("R1", "R2"))
-
+                              locus = c("12s", "cytB"), pattern = c("R1", "R2"))
+  
   graph.sample.ls <- plotQplus(list.files(get.value("raw_unz_rename.path"), pattern = "Sample", full.names = T),
-                      locus = c("12s", "cytB"), pattern = c("R1", "R2"))
-
+                               locus = c("12s", "cytB"), pattern = c("R1", "R2"))
+  
   save(file = get.value("Qplot.RAW.data"), 
        list = c("graph.tot.ls" , "graph.sample.ls"))
 }
@@ -380,7 +380,7 @@ cat("Graphics done!", "\n-------------------------\n",
 # FastQC
 
 if(get_os() %in% c("os","linux")){ # to run only on os and not windows
-
+  
   cmd <- paste("--outdir", get.value("result.FQraw.path"), list.files(get.value("raw_unz_rename.path"), full.names = T))
   system2("fastqc", cmd)
   
@@ -412,7 +412,71 @@ save(file = get.value("FastQC.data"),
 # write.csv(exp, paste(folder, "/FastQC/stats.csv", sep=""))
 
 
-# DADA2: raw to ASV ------------------------------------------------------------
+# RAW to FILT (cutadapt + dada2) ------------------------------------------------------------
+
+# Retry to add cutadapt
+
+file1 <- list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names=T) %>% str_subset("R1")
+file2 <- file1 %>% str_replace("R1","R2")
+
+new.file1 <- file1 %>% str_replace("01c_RawData_unzipped_rename", "02a_Cutadapt") %>% str_replace (".fastq", "_cut.fastq")
+new.file2 <- file2 %>% str_replace("01c_RawData_unzipped_rename", "02a_Cutadapt") %>% str_replace (".fastq", "_cut.fastq")
+
+for(x in 1:length(file1)){
+  
+  cat("\n",file1[x], sep="\n")
+  
+  cutadapt.12S.pairend <- paste("-g ^ACTGGGATTAGATACCCC",
+                                "-G ^TAGAACAGGCTCCTCTAG",
+                                "-o", new.file1[x], 
+                                "--paired-output", new.file2[x], 
+                                file1[x],
+                                file2[x],
+                                "-f", "fastq",      
+                                "--discard-untrimmed", 
+                                "--report=minimal",
+                                sep = " ") # forward adapter
+  
+  system2("cutadapt", cutadapt.12S.pairend, stdout="", stderr="") # to R console
+  
+}
+# CYTB
+
+file1 <- list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names=T) %>% str_subset("R1")
+file2 <- file1 %>% str_replace("R1","R2")
+
+new.file1 <- file1 %>% str_replace("01c_RawData_unzipped_rename", "02a_Cutadapt") %>% str_replace (".fastq", "_cut.fastq")
+new.file2 <- file2 %>% str_replace("01c_RawData_unzipped_rename", "02a_Cutadapt") %>% str_replace (".fastq", "_cut.fastq")
+
+for(x in 1:length(file1)){
+  
+  cat("\n",file1[x], sep="\n")
+  
+  #F - CYTB
+  cutadapt.cytB.F.cmd <- paste("-g ^AAAAAGCTTCCATCCAACATCTCAGCATGATGAAA",
+                               #"--minimum-length", "75", #  After truncation
+                               "-o", new.file1[x], 
+                               file1[x], 
+                               "-f", "fastq",
+                               "--discard-untrimmed", 
+                               "--report=minimal", 
+                               sep = " ") # forward adapter
+  
+  system2("cutadapt", cutadapt.cytB.F.cmd, stdout="", stderr="") # to R consol
+  
+  #r - CYTB
+  cutadapt.cytB.R.cmd <- paste("-g ^AAACTGCAGCCCCTCAGAATGATATTTGTCCTCA", # pas en reverse complement car encore du bon sens
+                               #"--minimum-length", "75", #  After truncation
+                               "-o", new.file2[x], 
+                               file2[x], 
+                               "-f", "fastq",
+                               "--discard-untrimmed", 
+                               "--report=minimal", 
+                               sep = " ") # forward adapter
+  
+  system2("cutadapt", cutadapt.cytB.R.cmd, stdout="", stderr="") # to R consol
+  
+}
 
 
 #all.files <-  add.filt.files(LOCI = c("12s", "cytB"), PATH = filt_dada2.path, FILE.LS = all.files) 
@@ -422,75 +486,72 @@ save(file = get.value("FastQC.data"),
 # Filtrage en soi
 # Real filtering
 
-# function to add filt names
-filt.names <- function(files){
-  new.files <- files %>% str_replace(".fastq", "_filt.fastq.gz") %>%
-                         str_replace(get.value("raw_unz_rename.path"), get.value("filt_dada2.path"))
-  
-  new.files
-}
+# # function to add filt names
+# filt.names <- function(files){
+#   new.files <- files %>% str_replace(".fastq", "_filt.fastq.gz") %>%
+#                          str_replace(get.value("raw_unz_rename.path"), get.value("filt_dada2.path"))
+#   
+#   new.files
+# }
 
-cut.names <- function(files){
-  new.files <- files %>% str_replace(".fastq", "_cutadapt.fastq") %>%
-    str_replace(get.value("filt_dada2.path"), get.value("filt_cutadapt.path"))
-    new.files
-}
+file1 <- list.files(get.value("filt_cutadapt.path"), pattern = "12s", full.names = T) %>% str_subset("R1")
+file2 <- file1 %>% str_replace("R1", "R2")
 
-filter.12s.summary <- filterAndTrim(fwd = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R1"),
-                                          filt = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R1") %>% filt.names(),
-                                          rev = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R2"),
-                                          filt.rev = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = T) %>% str_subset("R2") %>% filt.names(),
-                                          truncQ=10, # minimum Q score, 10 = 90% base call accuracy
-                                          truncLen = c(0,0), # Taille min/max des reads
-                                          trimLeft= c(18, 18), # Impossible à enlever avec cut-adapt ... 
-                                          maxLen = c(Inf,Inf),
-                                          minLen = c(75,75), # after trimming and truncation
-                                          maxEE=c(1,1),
-                                          #orient.fwd = c("ACTGG"), # debut de l'amorce F
-                                          compress = TRUE,
-                                          multithread=FALSE, # TRUE on linux
-                                          verbose = TRUE) 
+new.file1 <- file1 %>% str_replace(get.value("filt_cutadapt.path"), get.value("filt_dada2.path")) %>%  str_replace(".fastq", "_filt.fastq")
+new.file2 <- file2 %>% str_replace(get.value("filt_cutadapt.path"), get.value("filt_dada2.path")) %>%  str_replace(".fastq", "_filt.fastq")
+
+# 12S
+
+filter.12s.summary <- filterAndTrim(fwd = file1,
+                                    filt = new.file1,
+                                    rev = file2,
+                                    filt.rev = new.file2,
+                                    truncQ=10, # minimum Q score, 10 = 90% base call accuracy
+                                    truncLen = c(0,0), # Taille min/max des reads
+                                    trimLeft= c(0, 0), # Deja enlevé avec cutadapt, sinon c(18,18) 
+                                    maxLen = c(Inf,Inf),
+                                    minLen = c(50,50), # after trimming and truncation
+                                    maxEE=c(1,1),
+                                    #orient.fwd = c("ACTGG"), # debut de l'amorce F
+                                    compress = FALSE, # Voir si c'est OK de compresser spour JAMP
+                                    multithread=FALSE, # TRUE on linux
+                                    verbose = TRUE) 
 
 
-filter.cytB.summary <- filterAndTrim(fwd = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R1"),
-                                     filt = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R1") %>% filt.names(),
-                                     rev = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R2"),
-                                     filt.rev = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R2") %>% filt.names(),
-                                     truncQ = 10,
-                                     truncLen = c(100,100), # Taille min/max des reads
-                                     trimLeft= c(35, 34), # Je vais les enlever avec cutadapt 
-                                     maxLen = c(Inf,Inf),
-                                     minLen = c(0,0), # after trimming and truncation
-                                     maxEE=c(1,1),   
-                                     compress = TRUE,
-                                     multithread=FALSE, # TRUE on linux
-                                     verbose = TRUE) 
+# CytB
+file1 <- list.files(get.value("filt_cutadapt.path"), pattern = "cytB", full.names = T) %>% str_subset("R1")
+file2 <- file1 %>% str_replace("R1", "R2")
 
-filter.cytB.summary.R1 <- filterAndTrim(fwd = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R1"),
-                                     filt = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R1") %>% filt.names(),
-                                     #rev = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R2"),
-                                     #filt.rev = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R2") %>% filt.names(),
-                                     truncQ = 6,
-                                     truncLen = c(100), # Taille min/max des reads
-                                     trimLeft= c(35), # Je vais les enlever avec cutadapt 
-                                     maxLen = c(Inf),
-                                     minLen = c(0), # after trimming and truncation
-                                     maxEE=c(2),   
-                                     compress = TRUE,
-                                     multithread=FALSE, # TRUE on linux
-                                     verbose = TRUE) 
+new.file1 <- file1 %>% str_replace(get.value("filt_cutadapt.path"), get.value("filt_dada2.path")) %>%  str_replace(".fastq", "_filt.fastq")
+new.file2 <- file2 %>% str_replace(get.value("filt_cutadapt.path"), get.value("filt_dada2.path")) %>%  str_replace(".fastq", "_filt.fastq")
 
-filter.cytB.summary.R2 <- filterAndTrim(fwd = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R2"),
-                                        filt = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R2") %>% filt.names(),
+
+
+filter.cytB.R1.summary <- filterAndTrim(fwd = file1,
+                                        filt = new.file1,
                                         #rev = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R2"),
                                         #filt.rev = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R2") %>% filt.names(),
                                         truncQ = 6,
-                                        truncLen = c(100), # Taille min/max des reads
-                                        trimLeft= c(34), # Je vais les enlever avec cutadapt 
+                                        truncLen = c(75), # Taille min/max des reads
+                                        trimLeft= c(0), # Je vais les enlever avec cutadapt - sinon 35
                                         maxLen = c(Inf),
                                         minLen = c(0), # after trimming and truncation
                                         maxEE=c(2),   
-                                        compress = TRUE,
+                                        compress = FALSE,
+                                        multithread=FALSE, # TRUE on linux
+                                        verbose = TRUE) 
+
+filter.cytB.R2.summary <- filterAndTrim(fwd = file2,
+                                        filt = new.file2,
+                                        #rev = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R2"),
+                                        #filt.rev = list.files(get.value("raw_unz_rename.path"), pattern = "cytB", full.names = T) %>% str_subset("R2") %>% filt.names(),
+                                        truncQ = 6,
+                                        truncLen = c(75), # Taille min/max des reads
+                                        trimLeft= c(0), # Je vais les enlever avec cutadapt - sinon 34
+                                        maxLen = c(Inf),
+                                        minLen = c(0), # after trimming and truncation
+                                        maxEE=c(2),   
+                                        compress = FALSE,
                                         multithread=FALSE, # TRUE on linux
                                         verbose = TRUE) 
 
@@ -518,10 +579,10 @@ if(file.exists(get.value("Qplot.FILT.data"))){
   
 } else {
   graph.tot.filt.ls   <- plotQplus(list.files(get.value("filt_dada2.path"), full.names = T),
-                              locus = c("12s", "cytB"), pattern = c("R1", "R2"))
+                                   locus = c("12s", "cytB"), pattern = c("R1", "R2"))
   
   graph.sample.filt.ls <- plotQplus(list.files(get.value("filt_dada2.path"), pattern = "Sample", full.names = T),
-                               locus = c("12s", "cytB"), pattern = c("R1", "R2"))
+                                    locus = c("12s", "cytB"), pattern = c("R1", "R2"))
   
   save(file = get.value("Qplot.FILT.data"), 
        list = c("graph.tot.filt.ls" , "graph.sample.filt.ls"))
@@ -546,7 +607,7 @@ graphQ.sample.filt<- ggarrange(graph.sample.filt.ls[[1]] + labs(title = "12S  - 
                                graph.sample.filt.ls[[4]] + labs(title = "CYTB - Reverse"),
                                labels = LETTERS[1:4],
                                ncol = 2, nrow = 2)
-     
+
 graphQ.sample.filt
 
 # Save graphs
@@ -575,6 +636,8 @@ ggsave(filename = "QualityPlotSample.filt.png",
        device = "png",
        width = 8, height = 8, units = "in")
 
+
+# FILT to ASV (denoise with DADA2) --------------------------------------------------
 
 # Calcul du taux d'erreur (DADA2)
 
@@ -621,42 +684,42 @@ derep.cytB.R <- derepFastq(list.files(get.value("filt_dada2.path"), pattern = "c
 # Inférence des échantillons
 
 dada.12s.F <- dada(derep.12s.F, 
-                    err = err.12s.F, 
-                    multithread=FALSE,
-                    pool=TRUE)
-                    #HOMOPOLYMER_GAP_PENALTY=-1, BAND_SIZE=32)
+                   err = err.12s.F, 
+                   multithread=FALSE,
+                   pool=TRUE)
+#HOMOPOLYMER_GAP_PENALTY=-1, BAND_SIZE=32)
 
 dada.12s.R <- dada(derep.12s.R, 
-                    err = err.12s.R, 
-                    multithread=FALSE,
-                    pool=TRUE)
-                    #HOMOPOLYMER_GAP_PENALTY=-1, BAND_SIZE=32)
+                   err = err.12s.R, 
+                   multithread=FALSE,
+                   pool=TRUE)
+#HOMOPOLYMER_GAP_PENALTY=-1, BAND_SIZE=32)
 
 
 dada.cytB.F <- dada(derep.cytB.F, 
                     err = err.cytB.F, 
                     multithread=FALSE,
                     pool=TRUE)
-                    #HOMOPOLYMER_GAP_PENALTY=-1, BAND_SIZE=32)
+#HOMOPOLYMER_GAP_PENALTY=-1, BAND_SIZE=32)
 
 dada.cytB.R <- dada(derep.cytB.R, 
                     err = err.cytB.R, 
                     multithread=FALSE,
                     pool=TRUE)
-                    #HOMOPOLYMER_GAP_PENALTY=-1, BAND_SIZE=32)
+#HOMOPOLYMER_GAP_PENALTY=-1, BAND_SIZE=32)
 
 
 
 ## DADA2 Options: Non-Illumnina sequencing technologies
 
 mergers.12S <- mergePairs(dadaF = dada.12s.F, 
-                               derepF = derep.12s.F, 
-                               dadaR = dada.12s.R, 
-                               derepR = derep.12s.R, 
-                               minOverlap = 30, 
-                               maxMismatch = 0,
-                               returnRejects = TRUE,
-                               verbose=TRUE)
+                          derepF = derep.12s.F, 
+                          dadaR = dada.12s.R, 
+                          derepR = derep.12s.R, 
+                          minOverlap = 30, 
+                          maxMismatch = 0,
+                          returnRejects = TRUE,
+                          verbose=TRUE)
 
 #mergers.cytB <- mergePairs(dadaF = dada.cytB.Fs, 
 #                          derepF = derep.cytB.Fs, 
@@ -698,6 +761,8 @@ seqtab.cytB.R <- removeBimeraDenovo(seqtab.cytB.R.int, method = "consensus",
                                     multithread = FALSE, verbose = TRUE)   
 
 
+# Save them somewhere!!!
+
 # Stats on chimera
 sum(seqtab.12s)/sum(seqtab.12s.int)
 #sum(seqtab.12s.F)/sum(seqtab.12S.F.int)
@@ -731,34 +796,34 @@ save(file = file.path(result.path, "Seqtab.data"),
 # Get track
 
 sum.12S <- get_trackDADA(SUMMARY = filter.12s.summary,
-              RAW.NAME = all.files[["12s.names"]] %>% str_remove(pattern = "12s-"),
-              #DADAf = dada.12s.Fs.seta, 
-              #DADAr = dada.12s.Rs.seta,
-              MERGER = mergers.12S,
-              SEQTAB = seqtab.12s,
-              FILT.NAMES = all.files[["12s.filt.names"]] %>% str_remove(pattern = "12s-")
-              )
+                         RAW.NAME = all.files[["12s.names"]] %>% str_remove(pattern = "12s-"),
+                         #DADAf = dada.12s.Fs.seta, 
+                         #DADAr = dada.12s.Rs.seta,
+                         MERGER = mergers.12S,
+                         SEQTAB = seqtab.12s,
+                         FILT.NAMES = all.files[["12s.filt.names"]] %>% str_remove(pattern = "12s-")
+)
 
 sum.12S.F <- get_trackDADA(SUMMARY = filter.12s.summary,
                            RAW.NAME = all.files[["12s.names"]] %>% str_remove(pattern = "12s-"),
                            SEQTAB = seqtab.12s.F,
                            FILT.NAMES = all.files[["12s.filt.names"]] %>% str_remove(pattern = "12s-")
-                           )
+)
 
 sum.12S.R <- get_trackDADA(SUMMARY = filter.12s.summary,
                            RAW.NAME = all.files[["12s.names"]] %>% str_remove(pattern = "12s-"),
                            SEQTAB = seqtab.12s.R,
                            FILT.NAMES = all.files[["12s.filt.names"]] %>% str_remove(pattern = "12s-")
-                           )
+)
 
 
 sum.cytB <- get_trackDADA(SUMMARY = filter.cytB.summary,
-                         RAW.NAME = all.files[["cytB.names"]] %>% str_remove(pattern = "cytB-"),
-                         #DADAf = dada.12s.Fs.seta, 
-                         #DADAr = dada.12s.Rs.seta,
-                         MERGER = mergers.cytB,
-                         SEQTAB = seqtab.cytB,
-                         FILT.NAMES = all.files[["cytB.filt.names"]] %>% str_remove(pattern = "cytB-")
+                          RAW.NAME = all.files[["cytB.names"]] %>% str_remove(pattern = "cytB-"),
+                          #DADAf = dada.12s.Fs.seta, 
+                          #DADAr = dada.12s.Rs.seta,
+                          MERGER = mergers.cytB,
+                          SEQTAB = seqtab.cytB,
+                          FILT.NAMES = all.files[["cytB.filt.names"]] %>% str_remove(pattern = "cytB-")
 )
 
 sum.cytB.F <- get_trackDADA(SUMMARY = filter.cytB.summary,
@@ -807,23 +872,23 @@ sum.cytB.wInfo <- sum.cytB %>% left_join(DataSeq %>% select(SampleID, SeqType, I
 
 
 sum.12S.wInfo.res <- sum.12S.wInfo %>%  filter(SeqType %in% c("sample", "mix", "blank")) %>% 
-                     group_by(SeqType) %>% 
-                     summarise(perc.all.filt = round(sum(filtered)/sum(nreads),3),
-                              perc.filt.merged = round(sum(merged)/sum(filtered),3),
-                              perc.merged.nochim = round(sum(nonchim)/sum(merged),3),
-                              perc.all.nochim  = round(sum(nonchim)/sum(nreads),3)
-                              ) %>% as.data.frame()
+  group_by(SeqType) %>% 
+  summarise(perc.all.filt = round(sum(filtered)/sum(nreads),3),
+            perc.filt.merged = round(sum(merged)/sum(filtered),3),
+            perc.merged.nochim = round(sum(nonchim)/sum(merged),3),
+            perc.all.nochim  = round(sum(nonchim)/sum(nreads),3)
+  ) %>% as.data.frame()
 
 
 sum.cytB.wInfo.res <- sum.cytB.wInfo %>%  
-                      filter(SeqType %in% c("sample", "mix", "blank")) %>% 
-                      group_by(SeqType) %>% 
-                      summarise(perc.all.filt = round(sum(filtered)/sum(nreads),3),
-                              perc.filt.merged = round(sum(merged)/sum(filtered),3),
-                              perc.merged.nochim = round(sum(nonchim)/sum(merged),3),
-                              perc.all.nochim  = round(sum(nonchim)/sum(nreads),3)
-                              ) %>% 
-                      as.data.frame()
+  filter(SeqType %in% c("sample", "mix", "blank")) %>% 
+  group_by(SeqType) %>% 
+  summarise(perc.all.filt = round(sum(filtered)/sum(nreads),3),
+            perc.filt.merged = round(sum(merged)/sum(filtered),3),
+            perc.merged.nochim = round(sum(nonchim)/sum(merged),3),
+            perc.all.nochim  = round(sum(nonchim)/sum(nreads),3)
+  ) %>% 
+  as.data.frame()
 
 cat("\n 12S:  Process raw summary by SeqType: \n",  
     file=file.path(log.path, "Process_RAW.log.txt"), 
@@ -851,32 +916,33 @@ cat("\n-------------------------\n",
 
 # IBIS: filtered reads (MOTHUR) to ASV ------------------------------------
 
+# 
+# 
+# all.files[["IBIS.files"]] <- list.files(filt_IBIS.path, pattern = "stability.trim.contigs.good.unique.good.filter.unique.precluster.fn.0.06.rep.pick")
+# 
+# 
+# all.files[["IBIS.files.names"]] <- all.files[["IBIS.files"]] %>% str_remove(pattern = "EP_") %>% 
+#                                    str_remove(pattern = "_stability.trim.contigs.good.unique.good.filter.unique.precluster.fn.0.06.rep.pick.fasta") %>% 
+#                                    stringr::str_replace_all("_", "-")
+# 
+# 
+# seqtab.12s.IBIS <-  makeSeqTabFromScratch(files = all.files[["IBIS.files"]],
+#                                           name = all.files[["IBIS.files.names"]],
+#                                           path = filt_IBIS.path) 
+# 
+# save(file = file.path(result.path, "Seqtab.data"), 
+#      list = ls(pattern = "seqtab."))
 
 
-all.files[["IBIS.files"]] <- list.files(filt_IBIS.path, pattern = "stability.trim.contigs.good.unique.good.filter.unique.precluster.fn.0.06.rep.pick")
+# FILT to OTU (usearch with JAMP)-------------------------------------------------------------
 
+# Umerge
 
-all.files[["IBIS.files.names"]] <- all.files[["IBIS.files"]] %>% str_remove(pattern = "EP_") %>% 
-                                   str_remove(pattern = "_stability.trim.contigs.good.unique.good.filter.unique.precluster.fn.0.06.rep.pick.fasta") %>% 
-                                   stringr::str_replace_all("_", "-")
-
-
-seqtab.12s.IBIS <-  makeSeqTabFromScratch(files = all.files[["IBIS.files"]],
-                                          name = all.files[["IBIS.files.names"]],
-                                          path = filt_IBIS.path) 
-
-save(file = file.path(result.path, "Seqtab.data"), 
-     list = ls(pattern = "seqtab."))
-
-
-# JAMP: raw to OTU -------------------------------------------------------------
-
-# library("JAMP")
-
-file1 <- list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names=T) %>% str_subset("R1")
+file1 <- list.files(get.value("filt_dada2.path"), pattern = "12s", full.names=T) %>% str_subset("R1")
 file2 <- file1 %>% str_replace("R1", "R2")
-new.file <- file1 %>% str_replace("01c_RawData_unzipped_rename", "03a_Merged_usearch") %>% 
-                      str_replace("_R1.fastq", "_merged.fastq")  
+new.file <- file1 %>% str_replace(get.value("filt_dada2.path"), get.value("filt_merge.usearch.path")) %>% 
+                      str_remove("_R1") %>% 
+                      str_replace(".fastq", "_merged.fastq")  
 
 for(x in 1:length(file1)){
   
@@ -885,54 +951,198 @@ for(x in 1:length(file1)){
   cmd <- paste("-fastq_mergepairs", file1[x], 
                "-reverse", file2[x],  
                "-fastqout", new.file[x], 
-               "-report", new.file[x] %>% str_replace("/03a_Merged_usearch/","/03a_Merged_usearch/log/") %>% str_replace("_merged.fastq", "_log.txt"),
+               "-report", new.file[x] %>% str_replace(get.value("filt_merge.usearch.path"),paste0(get.value("filt_merge.usearch.path"), "/log")) %>% str_replace("_merged.fastq", "_log.txt"),
                "-fastq_maxdiffs", "99", 
                "-fastq_pctid", "75", 
                "-fastq_trunctail",  "0",
-               "-fastq_minovlen", "16", 
+               "-fastq_minovlen", "30", 
                sep=" ")
   
   system2("usearch", cmd, stdout=F, stderr=F)  
   
 }
 
+# Add a min - max because some with 35 pb!!
 
 
+# Test
+files <- c(list.files(get.value("filt_merge.path"), pattern = "12s", full.names = T),
+           list.files(get.value("filt_dada2.path"), pattern = "cytB", full.names = T)
+           )
+new.files <-  files %>% str_replace(get.value("filt_merge.path"), get.value("filt_derep.path")) %>% 
+                        str_replace(get.value("filt_dada2.path"), get.value("filt_derep.path")) %>% 
+                        str_replace(".fastq","_derep.fasta")
 
-# cut adapt
+#U_cluster_otus(files= files, filter=0.01)
 
-cutadapt.F.cmd <- paste("-g ^ACTGGGATTAGATACCCC -o", 
-                            list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "12s") %>% str_subset("R1") %>% cut.names(), 
-                            list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "12s") %>% str_subset("R1"), 
-                            "--discard-untrimmed", 
-                            "--report=minimal",
-                            sep = " ") # forward adapter
+# Doesn't work - I will do it by hand once again.
 
-cmd1 <- paste("-g ", if(anchoring){"^"}, fw, " -o ", folder, "/_data/temp.txt \"", files, "\"", " -f ", if(fastq){"fastq"}else{"fasta"}, " --discard-untrimmed", sep="") # forward adapter
-cmd2 <- paste("-a ", rw, if(anchoring){"$"}," -o \"", new_names, "\" ", folder, "/_data/temp.txt -f ", if(fastq){"fastq"}else{"fasta"}, " --discard-untrimmed", sep="") #rverse adapter
+# Dereplicated files with vsearch
+
+for(x in 1:length(files)){
+  print(files[x])
+  
+  cmd <- paste("-derep_fulllength", files[x],
+             "-output", new.files[x],
+             "-sizeout",
+             "-sizein",
+             sep = " ")
+  
+  system2("vsearch", cmd, stdout = T, stderr = T)
+
+  gc(verbose = F) # unload memory
+    
+}
+
+# Create one big file
+
+?paste
+
+cmd1 <- paste(paste(list.files(get.value("filt_derep.path"), full.names = T, pattern = "12s"), collapse = " "), 
+             ">",
+              paste0(get.value("filt_derep.1file.path"), "/all.12s.fasta"),
+             sep = " "
+              )
+
+cmd2 <- paste(paste(list.files(get.value("filt_derep.path"), full.names = T, pattern = "cytB") %>% str_subset(pattern = "R1"), collapse = " "), 
+              ">",
+              paste0(get.value("filt_derep.1file.path"), "/all.cytB.R1.fasta"),
+              sep = " "
+              )
+
+cmd3 <- paste(paste(list.files(get.value("filt_derep.path"), full.names = T, pattern = "cytB") %>% str_subset(pattern = "R2"), collapse = " "), 
+              ">",
+              paste0(get.value("filt_derep.1file.path"), "/all.cytB.R2.fasta"),
+              sep = " "
+              )
+
+system2("cat", cmd1, stdout = T, stderr = T)
+system2("cat", cmd2, stdout = T, stderr = T)
+system2("cat", cmd3, stdout = T, stderr = T)
+
+# derep these big files
 
 
-# trimm primers
-Cutadapt(forward="ACTGGGATTAGATACCCC", # mlCOIintF
-         reverse="TAGAACAGGCTCCTCTAG", LDist=T) # jgHCO2198
+for(x in list.files(get.value("filt_derep.1file.path"), full.names = T)){
+  print(x)
+  
+  cmd <- paste("-derep_fulllength", x,
+               "-output", x %>% str_replace(".fasta", "_derep.fasta"),
+               "-sizeout",
+               "-sizein",
+               "-minuniquesize", "2",
+               sep = " ")
+  
+  system2("vsearch", cmd, stdout = T, stderr = T)
+  
+  gc(verbose = F) # unload memory
+}
+
+# Make OTU
+
+files <- list.files(get.value("filt_derep.1file.path"), full.names = T, pattern = "_derep.fasta")
+
+new.files <- files %>% str_replace(get.value("filt_derep.1file.path"), get.value("OTU.usearch")) %>% 
+                      str_replace("_derep.fasta", "_OTU.fasta")
 
 
-# discard with non target length
-Minmax(min=(104-10), max=(104+10))
+for(x in 1:length(files)){
+
+  cmd <- paste("-cluster_otus", files[x], 
+               "-otus", new.files[x], 
+               "-uparseout ", new.files[x] %>% str_replace(".fasta", "_OTUtab.txt"), 
+               "-relabel", "OTU_",
+               "-strand ", "plus", 
+               sep=" ")
+  
+  system2("usearch", cmd, stdout=T, stderr=T)  
+
+  #gc(verbose = F)
+  
+}
+
+# Compare OTU to derep
+
+# 12S
+
+files <- list.files(get.value("filt_derep.path"), pattern = "12s", full.names = T)
+new.files <- files %>% str_replace(get.value("filt_derep.path"),get.value("Compare.OTU.usearch")) %>%  
+                       str_replace(".fasta",".txt")
 
 
-# SRA = function to download directly from SRA
+for(x in 1:length(files)){
+  
+  print(files[x])
+  
+  cmd <- paste("-usearch_global", files[x], 
+               "-db", list.files(get.value("OTU.usearch"), pattern = "12s", full.names = T) %>% str_subset("OTU.fasta"), 
+               "-strand", "plus",  
+               "-id", "0.97",
+               "-blast6out", new.files[x], 
+               "-maxhits", "1", 
+               "-maxaccepts", "1", 
+               "-maxrejects", "32",
+               sep=" ")
 
-# discard reads above 1 expected error
-U_max_ee(max_ee=1) # usearch
+  system2("usearch", cmd, stdout=T, stderr=T)
 
+}
 
+# cytb.R1
 
+files <- list.files(get.value("filt_derep.path"), pattern = "cytB", full.names = T) %>% str_subset("R1")
+new.files <- files %>% str_replace(get.value("filt_derep.path"),get.value("Compare.OTU.usearch")) %>%  
+  str_replace(".fasta",".txt")
 
-#U_cluster_otus(files= file.path(raw_unz.path,all.files[["cytB.filt.files.R2.OK"]]), filter=0.01)
+for(x in 1:length(files)){
+  
+  print(files[x])
+  
+  cmd <- paste("-usearch_global", files[x], 
+               "-db", list.files(get.value("OTU.usearch"), pattern = "cytB.R1", full.names = T) %>% str_subset("OTU.fasta"), 
+               "-strand", "plus",  
+               "-id", "0.97",
+               "-blast6out", new.files[x], 
+               "-maxhits", "1", 
+               "-maxaccepts", "1", 
+               "-maxrejects", "32",
+               sep=" ")
+  
+  system2("usearch", cmd, stdout=T, stderr=T)
+  
+}
 
+# cytb.R2
 
+files <- list.files(get.value("filt_derep.path"), pattern = "cytB", full.names = T) %>% str_subset("R2")
+new.files <- files %>% str_replace(get.value("filt_derep.path"),get.value("Compare.OTU.usearch")) %>%  
+  str_replace(".fasta",".txt")
 
+for(x in 1:length(files)){
+  
+  print(files[x])
+  
+  cmd <- paste("-usearch_global", files[x], 
+               "-db", list.files(get.value("OTU.usearch"), pattern = "cytB.R2", full.names = T) %>% str_subset("OTU.fasta"), 
+               "-strand", "plus",  
+               "-id", "0.97",
+               "-blast6out", new.files[x], 
+               "-maxhits", "1", 
+               "-maxaccepts", "1", 
+               "-maxrejects", "32",
+               sep=" ")
+  
+  system2("usearch", cmd, stdout=T, stderr=T)
+  
+}
+
+empty <- file.info(new.files)$size==0
+
+new.files[!empty]
+
+list.files(get.value("filt_derep.1file.path"), full.length = T)
+
+getwd()
 
 #Sys.setenv(PATH = paste(Sys.getenv("PATH"), path_to_usearch, sep= .Platform$path.sep))
 
@@ -940,42 +1150,14 @@ U_max_ee(max_ee=1) # usearch
 # Add a cut adapt stuff
 
 
-Amorces %>% filter(Locus == "12s") %>% pull(Amorce) %>% nchar()
-Amorces %>% filter(Locus == "cytB") %>% pull(Amorce) %>% nchar()
+Amorces %>% filter(Locus == "12s") %>% pull(Amorce)
+Amorces %>% filter(Locus == "cytB") %>% pull(Amorce) 
 
 get.value("filt_cutadapt.path")
 
 # l'intégrer plus tard dans le code ....
 # car j'ai besoin de garder le même N reads avant/après ... voir comment trim le fait.
 
-
-
-
-#F - 12S
-cutadapt.cmd.12s.F <- paste("-g ^ACTGGGATTAGATACCCC -o", 
-                            list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "12s") %>% str_subset("R1") %>% cut.names(), 
-                            list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "12s") %>% str_subset("R1"), 
-                            "--discard-untrimmed", 
-                            "--report=minimal",
-                            sep = " ") # forward adapter
-
-#F - CYTB
-cutadapt.cmd.cytB.F <- paste("-g ^AAAAAGCTTCCATCCAACATCTCAGCATGATGAAA -o", 
-                             list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "cytB") %>% str_subset("R1") %>% cut.names(), 
-                             list.files(get.value("filt_dada2.path"), full.names = TRUE, pattern = "cytB") %>% str_subset("R1"), 
-                             "--discard-untrimmed", 
-                             "--report=minimal", 
-                             sep = " ") # forward adapter
-
-
-cmd2
-
-for (i in 1:length(cmd1)){
-  system2("cutadapt", cutadapt.cmd.12s.F[i], stdout="", stderr="") # to R console
-  #cat(cmd1[1], sep = "\n")  
-}
-
-files_to_delete <- c(files_to_delete, new_names)
 
 
 
