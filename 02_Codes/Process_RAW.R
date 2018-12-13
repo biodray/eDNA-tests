@@ -50,34 +50,37 @@ Amorces    <- read_excel(get.value("Sample.xl"),sheet="Amorces",na="NA",guess_ma
 DataSeq <- DataSeq %>% mutate (IbisID = paste0("p",Plaque,"-",Puit)) %>% 
   left_join(DataSample %>% select(SampleID, NomLac, CatSite), by = "SampleID")
 
-# Log
+# Setting up the log file
 
-if(file.exists(file.path(log.path, "Process_RAW.log.txt"))){
-  cat("\nWARNING: The log file Process_RAW.log.txt will be erased\n")
+if(file.exists(get.value("Raw.log"))){
+
+  switch(menu(title = "Do you want to erase the previous RAW log files?", graphics = F, 
+            choice = c("yes", "no")
+            )+1,
+       # Answer 0
+       cat("Nothing done\n"),
+       # Answer 1 (yes)
+      {cat("\nA new log file Process_RAW.log.txt was created (the previous onw was erased)\n\n")
+       cat("\n-------------------------\n", 
+           "Process raw eDNA data\n",
+           date(),
+           "\n-------------------------\n", 
+           file=get.value("Raw.log"), 
+           append = FALSE, sep = "\n")
+           }, 
+       # Answer 2 (no) 
+      cat ("\nInformation will be append to the log file Process_RAW.log.txt\n\n")
+      )
+
+} else {
+  cat ("\nThe log file Process_RAW.log.txt was created\n\n")  
+  cat("\n-------------------------\n", 
+      "Process raw eDNA data\n",
+      date(),
+      "\n-------------------------\n", 
+      file=get.value("Raw.log"), 
+      append = FALSE, sep = "\n")
 }
-
-cat("\n-------------------------\n", 
-    "Process raw eDNA data\n",
-    date(),
-    "\n-------------------------\n", 
-    file=get.value("Raw.log"), 
-    append = FALSE, sep = "\n")
-
-# Try a prompt message
-
-cat("What do you wnat")
-
-switch(menu(choice = c("yes", "no"), title = "Do you want to erase the previous log files?", graphics = F) + 1,
-       cat("Nothing done\n"), 
-       { cat(1)
-         cat(1)
-         }, 
-       cat ("Not erased"))
-
-
-utils:::askYesNoWinDialog("Eahello", c("List letters", "List LETTERS"))
-
-askYesNo("Do you want to use askYesNo?")
 
 # Functions ---------------------------------------------------------------
 
@@ -177,9 +180,31 @@ makeSeqTabFromScratch <- function(files, name, path=""){
 # Small code to no redo this part if has been previously done
 
 if(file.exists(get.value("Qplot.RAW.data"))){
-  load(get.value("Qplot.RAW.data"))
   
+  switch(menu(title = "Do you want to re-plot RAW data quality?", graphics = F, 
+              choice = c("yes", "no")
+  )+1,
+  # Answer 0
+  cat("Nothing done\n"),
+  # Answer 1
+ {cat("\nRaw data are re-plot (can take some time)\n\n")
+   graph.tot.ls   <- plotQplus(list.files(get.value("raw_unz_rename.path"), full.names = T),
+                               locus = c("12s", "cytB"), pattern = c("R1", "R2"))
+   
+   graph.sample.ls <- plotQplus(list.files(get.value("raw_unz_rename.path"), pattern = "Sample", full.names = T),
+                                locus = c("12s", "cytB"), pattern = c("R1", "R2"))
+   
+   save(file = get.value("Qplot.RAW.data"), 
+        list = c("graph.tot.ls" , "graph.sample.ls"))  
+  } , 
+  # Answer 2 (no)
+ {cat("\nRaw data are not re-plot (old data are reloaded)\n\n")
+  load(get.value("Qplot.RAW.data"))
+}
+  )
+
 } else {
+  cat("\nRaw data plot (old data are reloaded)\n\n")
   graph.tot.ls   <- plotQplus(list.files(get.value("raw_unz_rename.path"), full.names = T),
                               locus = c("12s", "cytB"), pattern = c("R1", "R2"))
   
@@ -191,8 +216,6 @@ if(file.exists(get.value("Qplot.RAW.data"))){
 }
 
 # devrait peut-être aller dans un autre script - J'aimerais garder ce script au min
-names(graph.tot.ls)
-names(graph.sample.ls)
 
 graphQ.total <- ggarrange(graph.tot.ls[[1]] + labs(title = "12S  - Forward"),
                           graph.tot.ls[[2]] + labs(title = "12S  - Reverse"),
@@ -213,7 +236,13 @@ graphQ.sample<- ggarrange(graph.sample.ls[[1]] + labs(title = "12S  - Forward"),
 graphQ.sample
 
 # Save graphs
-
+switch(menu(title = "Do you want to save RAW data quality plots?", graphics = F, 
+            choice = c("yes", "no")
+)+1,
+# Answer 0
+cat("Nothing done\n"),
+# Answer 1
+{ cat("\nRaw data plot were saved\n\n")
 ggsave(filename = "QualityPlotTotal.pdf", 
        path = get.value("result.Q,path"),       
        plot = graphQ.total,
@@ -237,6 +266,11 @@ ggsave(filename = "QualityPlotSample.png",
        plot = graphQ.sample,
        device = "png",
        width = 8, height = 8, units = "in")
+}, 
+# Answer 2 (no)
+cat("\nRaw data quality plot were not saved\n\n")
+
+)
 
 
 cat("Graphics done!", "\n-------------------------\n",  
