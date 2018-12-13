@@ -87,13 +87,16 @@ add.param(PARAM) <- c("Raw.log", paste(get.value("log.path"),"Process_RAW.log.tx
 
 # Data --------------------------------------------------------------------
 
+# RAW
 add.param(PARAM) <- c("Qplot.RAW.data", paste(get.value("result.data.path"),"Qplot.RAW.data", sep = "/"))
-add.param(PARAM) <- c("FastQC.data", paste(get.value("result.data.path"),"FastQC.data", sep = "/"))
 add.param(PARAM) <- c("Qplot.FILT.data", paste(get.value("result.data.path"),"Qplot.FILT.data", sep = "/"))
+add.param(PARAM) <- c("FastQC.data", paste(get.value("result.data.path"),"FastQC.data", sep = "/"))
+add.param(PARAM) <- c("dada2.filt.data", paste(get.value("result.data.path"),"dada2.filt.data", sep = "/"))
 
+add.param(PARAM) <- c("dada2.data", paste(get.value("result.data.path"),"dada2.data", sep = "/"))
+add.param(PARAM) <- c("ASVtable.data", paste(get.value("result.data.path"),"ASVtable.data", sep = "/"))
 
-
-
+add.param(PARAM) <- c("OTUtable.data", paste(get.value("result.data.path"),"OTUtable.data", sep = "/"))
 
 
 # Save Parameters ---------------------------------------------------------

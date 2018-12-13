@@ -7,3 +7,159 @@ Wed Dec 12 20:31:04 2018
 
 -------------------------
 
+
+
+-------------------------
+
+NEW ANALASIS
+Thu Dec 13 09:06:56 2018
+
+-------------------------
+
+Raw data quality were replot and saved:
+./01_Results/01_data/Qplot.RAW.data
+
+-------------------------
+
+Raw data quality were plot and saved:
+./01_Results/01_data/Qplot.RAW.data
+
+-------------------------
+
+FastQC analysis was performed:
+./01_Results/01_data/Qplot.RAW.data
+result.FQraw.path
+FastQC analysis was performed:
+./01_Results/02_ReadsQ/FastQC_Raw
+FastQC analysis was performed:
+./01_Results/02_ReadsQ/FastQC_Raw
+
+-------------------------
+
+FastQC analysis was performed:
+./01_Results/02_ReadsQ/FastQC_Raw
+
+-------------------------
+
+FastQC results were aggregated:
+./01_Results/02_ReadsQ
+./01_Results/01_data/FastQC.data
+
+-------------------------
+
+Quality filtering was performed with dada2:
+./00_Data/02b_Filtered_dada2
+
+
+-------------------------
+
+Quality filtering was performed with dada2:
+./00_Data/02b_Filtered_dada2
+./01_Results/01_data/dada2.filt.data
+
+-------------------------
+
+Filt data quality were plot and saved:
+./01_Results/01_data/Qplot.FILT.data
+
+-------------------------
+
+Error rate assement was performed and graph were saved:
+01_Results/ErrorsRate.dada2.12S.pdf
+01_Results/ErrorsRate.dada2.CYTB.pdf
+
+-------------------------
+
+Dada2 samples were merged for 12s.
+Sequence table was created and chimeric sequences were removed.
+Data were saved:
+./01_Results/01_data/ASVtable.data
+./01_Results/01_data/dada2.data
+
+-------------------------
+
+Sequences were dereplicated:
+./00_Data/04c_Derep_vsearch
+
+
+
+Time to run this script: 2.16 hours
+
+-------------------------
+
+
+Time to run this script: 2.16 hours
+
+-------------------------
+
+
+Time to run this script: 2.16 hours
+
+-------------------------
+
+
+END of the raw data processing!
+
+Time to run this script: 2.16 hours
+
+-------------------------
+
+
+END of the raw data processing!
+
+Time to run this script: 2.16 hours
+
+-------------------------
+
+
+END of the raw data processing!
+
+Time to run this script: 2.16 hours
+
+-------------------------
+
+
+END of the raw data processing!
+
+Time to run this script: 2.16 hours
+
+-------------------------
+
+
+END of the raw data processing!
+
+Time to run this script: 2.16 hours
+
+-------------------------
+
+
+END of the raw data processing!
+
+Time to run this script: 2.16 hours
+
+-------------------------
+
+R version 3.5.1 (2018-07-02)
+
+END of the raw data processing!
+
+Time to run this script: 2.16 hours
+
+-------------------------
+
+R version 3.5.1 (2018-07-02)
+Windows 7 x64 SP 1
+x86_64, mingw32
+
+END of the raw data processing!
+
+Time to run this script: 2.16 hours
+
+-------------------------
+
+R version: R version 3.5.1 (2018-07-02)
+OS: Windows 7 x64 SP 1
+System: x86_64, mingw32
+~ Important packages ~
+dada2: 1.10.0
+fastqcr: 0.1.0.999
