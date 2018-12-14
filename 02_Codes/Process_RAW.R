@@ -54,7 +54,7 @@ for(i in 1:length( list.files("./03_Functions") )){
 
 if(file.exists(get.value("Raw.log"))){
 
-  switch(menu(title = "Do you want to erase the previous RAW log files?", graphics = F, 
+  switch(menu(title = "Do you want to erase the previous RAW log files?", graphics = T, 
             choice = c("yes", "no")
             )+1,
        # Answer 0
@@ -77,7 +77,7 @@ if(file.exists(get.value("Raw.log"))){
             file=get.value("Raw.log"), 
             append = T, sep = "\n")
       }
-        )a
+        )
 
 } else {
   cat ("\nThe log file Process_RAW.log.txt was created\n\n")  
@@ -188,7 +188,7 @@ makeSeqTabFromScratch <- function(files, name, path=""){
 
 if(file.exists(get.value("Qplot.RAW.data"))){
   
-  switch(menu(title = "Do you want to re-plot RAW data quality?", graphics = F, 
+  switch(menu(title = "Do you want to re-plot RAW data quality?", graphics = T, 
               choice = c("yes", "no")
   )+1,
   # Answer 0
@@ -255,7 +255,7 @@ graphQ.sample<- ggarrange(graph.sample.ls[[1]] + labs(title = "12S  - Forward"),
 graphQ.sample
 
 # Save graphs
-switch(menu(title = "Do you want to save RAW data quality plots in PDF and PNG?", graphics = F, 
+switch(menu(title = "Do you want to save RAW data quality plots in PDF and PNG?", graphics = T, 
             choice = c("yes", "no")
             )+1,
        # Answer 0
@@ -295,6 +295,8 @@ switch(menu(title = "Do you want to save RAW data quality plots in PDF and PNG?"
 
 if(get_os() %in% c("os","linux")){ # to run only on os and not windows
   
+  file.remove(list.files(get.value("result.FQraw.path"), full.name = T, pattern ="fastqc"))
+  
   cmd <- paste("--outdir", get.value("result.FQraw.path"), list.files(get.value("raw_unz_rename.path"), full.names = T))
   
   system2("fastqc", cmd)
@@ -309,7 +311,7 @@ if(get_os() %in% c("os","linux")){ # to run only on os and not windows
 } else {cat("Cannot perform FastQC on windows yet -- sorry!!")}
 
 # Save graphs
-switch(menu(title = "Do you want to aggregate FastQC results?", graphics = F, 
+switch(menu(title = "Do you want to aggregate FastQC results?", graphics = T, 
             choice = c("yes", "no")
             )+1,
        # Answer 0
@@ -367,12 +369,16 @@ if(get_os() %in% c("os","linux")){
   new.files2 <- files2 %>% cutadapt.files() 
   new.files3 <- files3 %>% cutadapt.files() 
   new.files4 <- files4 %>% cutadapt.files() 
+
+  # Remove old files
+  file.remove(list.files(get.value("filt_cutadapt.path"), full.name = T, pattern =".fastq"))
+  file.remove(list.files(get.value("filt_cutadapt.log"), full.name = T, pattern ="_log.txt"))
   
   # 12S
   
-  for(x in 1:length(file1)){
+  for(x in 1:length(files1)){
     
-    cat("\n",file1[x], sep="\n")
+    cat("\n",files1[x], sep="\n")
     
     cmd <- paste("-g ^ACTGGGATTAGATACCCC",
                                   "-G ^TAGAACAGGCTCCTCTAG",
@@ -382,7 +388,7 @@ if(get_os() %in% c("os","linux")){
                                   files2[x],
                                   "-f", "fastq",      
                                   "--discard-untrimmed", 
-                                  "--report=minimal",
+                                  #"--report=minimal",
                                   sep = " ") # forward adapter
     
     A <- system2("cutadapt", cmd, stdout=T, stderr=T) # to R console
@@ -390,57 +396,72 @@ if(get_os() %in% c("os","linux")){
     # TO UPDaTE
     
     # save a file log
-    #cat(file = new.files[x] %>% str_replace(get.value("filt_min.path"), get.value("filt_min.log")) %>% 
-    #      str_replace(".fastq","_log.txt"),
-    #    A, # what to put in my file
-    #    append= F, sep = "\n")
+    cat(file = new.files1[x] %>% str_replace(get.value("filt_cutadapt.path"), get.value("filt_cutadapt.log")) %>% 
+          str_replace(".fastq","_log.txt") %>% 
+          str_remove("_R1"),
+          A, # what to put in my file
+          append= F, sep = "\n")
     
-    cat("12S adapters were removed with cutadapt:",
-        get.value("filt_cutadapt.path"),
-        "\n-------------------------\n", 
-        file=get.value("Raw.log"), 
-        append = T, sep = "\n") 
-    
+
   }
+
+  cat("12S adapters were removed with cutadapt:",
+      get.value("filt_cutadapt.path"),
+      get.value("filt_cutadapt.log"),
+      "\n-------------------------\n", 
+      file=get.value("Raw.log"), 
+      append = T, sep = "\n") 
   
   # CYTB
 
-  for(x in 1:length(file1)){
+  for(x in 1:length(files3)){
     
-    cat("\n",file1[x], sep="\n")
+    cat("\n",files3[x], sep="\n")
     
     #F - CYTB
     cmd1 <- paste("-g ^AAAAAGCTTCCATCCAACATCTCAGCATGATGAAA",
                                  #"--minimum-length", "75", #  After truncation
                                  "-o", new.files3[x], 
+                                 files3[x], 
+                                 "-f", "fastq",
+                                 "--discard-untrimmed", 
+                                 "--report=minimal", 
+                                 sep = " ") # forward adapter
+    
+    A <- system2("cutadapt", cmd1, stdout=T, stderr=T) # to R consol
+    
+    #r - CYTB
+    cmd2 <- paste("-g ^AAACTGCAGCCCCTCAGAATGATATTTGTCCTCA", # pas en reverse complement car encore du bon sens
+                                 #"--minimum-length", "75", #  After truncation
+                                 "-o", new.files4[x], 
                                  files4[x], 
                                  "-f", "fastq",
                                  "--discard-untrimmed", 
                                  "--report=minimal", 
                                  sep = " ") # forward adapter
     
-    system2("cutadapt", cmd1, stdout="", stderr="") # to R consol
+    B <- system2("cutadapt", cmd2, stdout=T, stderr=T) # to R consol
     
-    #r - CYTB
-    cmd2 <- paste("-g ^AAACTGCAGCCCCTCAGAATGATATTTGTCCTCA", # pas en reverse complement car encore du bon sens
-                                 #"--minimum-length", "75", #  After truncation
-                                 "-o", new.files2[x], 
-                                 files2[x], 
-                                 "-f", "fastq",
-                                 "--discard-untrimmed", 
-                                 "--report=minimal", 
-                                 sep = " ") # forward adapter
+    # Write a log file
     
-    system2("cutadapt", cmd2, stdout="", stderr="") # to R consol
-    
-    cat("cytB adapters were removed with cutadapt:",
-        get.value("filt_cutadapt.path"),
-        "\n-------------------------\n", 
-        file=get.value("Raw.log"), 
-        append = T, sep = "\n") 
+    cat(file = new.files3[x] %>% str_replace(get.value("filt_cutadapt.path"), get.value("filt_cutadapt.log")) %>% 
+                                 str_replace(".fastq","_log.txt"),
+        A, # what to put in my file
+       append= F, sep = "\n")
+
+    cat(file = new.files4[x] %>% str_replace(get.value("filt_cutadapt.path"), get.value("filt_cutadapt.log")) %>% 
+                                 str_replace(".fastq","_log.txt"),
+         B, # what to put in my file
+         append= F, sep = "\n")
     
   }
 
+  cat("cytB adapters were removed with cutadapt:",
+      get.value("filt_cutadapt.path"),
+      "\n-------------------------\n", 
+      file=get.value("Raw.log"), 
+      append = T, sep = "\n") 
+  
 } else {cat("Cannot perform cutadapt on windows yet -- sorry!!")}
 
 
@@ -461,6 +482,8 @@ new.files2 <- files2 %>% dada2.files()
 new.files3 <- files3 %>% dada2.files() 
 new.files4 <- files4 %>% dada2.files() 
 
+# Remove old files
+file.remove(list.files(get.value("filt_dada2.path"), full.name = T, pattern =".fastq"))
 
 # 12S
 
@@ -631,6 +654,9 @@ cat("Nothing done\n"),
 cat("\nFILT data quality plot were not saved\n\n")
 )
 
+#load("today.RData")
+#save.image("today.RData")
+
 # 3. FILT to ASV (denoise with DADA2) --------------------------------------------------
 
 # 3.1 Calcul du taux d'erreur
@@ -643,8 +669,8 @@ files4 <- files2 %>% str_replace("12s","cytB")
 err.12s.F <- learnErrors(files1) 
 err.12s.R <- learnErrors(files2) 
 
-err.cytB.F <- learnErrors(files2) 
-err.cytB.R <- learnErrors(files3) 
+err.cytB.F <- learnErrors(files3) 
+err.cytB.R <- learnErrors(files4) 
 
 pdf("01_Results/ErrorsRate.dada2.12S.pdf") 
   plotErrors(err.12s.F, nominalQ=TRUE)
@@ -726,7 +752,7 @@ cat("Dada2 samples were merged for 12s.",
     file=get.value("Raw.log"), 
     append = T, sep = "\n") 
 
-# 3,5 Make sequence table
+# 3.5 Make sequence table
 
 seqtab.12s.int    <- makeSequenceTable(mergers.12S)
 #seqtab.12S.F.int  <- makeSequenceTable(dada.12s.Fs)
@@ -791,27 +817,31 @@ cat("Data were saved:",
 
 # 4.1 Umerge
 
-file1 <- list.files(get.value("filt_dada2.path"), pattern = "12s", full.names=T) %>% str_subset("R1")
-file2 <- file1 %>% str_replace("R1", "R2")
-new.file <- file1 %>% str_replace(get.value("filt_dada2.path"), get.value("filt_merge.usearch.path")) %>% 
+files1 <- list.files(get.value("filt_dada2.path"), pattern = "12s", full.names=T) %>% str_subset("R1")
+files2 <- files1 %>% str_replace("R1", "R2")
+new.files <- files1 %>% str_replace(get.value("filt_dada2.path"), get.value("filt_merge.path")) %>% 
                       str_remove("_R1") %>% 
                       str_replace(".fastq", "_merged.fastq")  
 
-for(x in 1:length(file1)){
+# Remove old files
+file.remove(list.files(get.value("filt_merge.path"), full.name = T, pattern =".fastq"))
+file.remove(list.files(get.value("filt_merge.path"), full.name = T, pattern =".fastq"))
+
+for(x in 1:length(files1)){
   
-  print(file1[x])
+  print(files1[x])
   
-  cmd <- paste("-fastq_mergepairs", file1[x], 
-               "-reverse", file2[x],  
-               "-fastqout", new.file[x], 
-               "-report", new.file[x] %>% str_replace(get.value("filt_merge.usearch.path"),paste0(get.value("filt_merge.usearch.path"), "/log")) %>% str_replace("_merged.fastq", "_log.txt"),
+  cmd <- paste("-fastq_mergepairs", files1[x], 
+               "-reverse", files2[x],  
+               "-fastqout", new.files[x], 
+               "-report", new.files[x] %>% str_replace(get.value("filt_merge.path"),get.value("filt_merge.log")) %>% str_replace("_merged.fastq", "_log.txt"),
                "-fastq_maxdiffs", "99", 
                "-fastq_pctid", "75", 
                "-fastq_trunctail",  "0",
                "-fastq_minovlen", "30", 
                sep=" ")
   
-  system2("usearch", cmd, stdout=F, stderr=F)  
+  system2("usearch", cmd, stdout=T, stderr=T)  
   
 }
 
@@ -825,6 +855,8 @@ cat("12S sequence were merged with usearch.",
 files <- list.files(get.value("filt_merge.path"), pattern = "12s", full.names=T)
 new.files <- files %>% str_replace(get.value("filt_merge.path"), get.value("filt_min.path")) %>% 
                        str_replace(".fastq", "_min.fastq")
+
+file.remove(list.files(get.value("filt_min.path"), full.name = T, pattern =".fastq"))
 
 for(x in 1:length(files)){
   
@@ -863,6 +895,8 @@ new.files <-  files %>% str_replace(get.value("filt_min.path"), get.value("filt_
                         str_replace(get.value("filt_dada2.path"), get.value("filt_derep.path")) %>% 
                         str_replace(".fastq","_derep.fasta")
 
+file.remove(list.files(get.value("filt_derep.path"), full.name = T, pattern =".fasta"))
+
 for(x in 1:length(files)){
   print(files[x])
   
@@ -874,13 +908,11 @@ for(x in 1:length(files)){
   
   system2("vsearch", cmd, stdout = T, stderr = T)
 
-  gc(verbose = F) # unload memory
-    
 }
 
 # 4.4 Create one big file
 
-?paste
+file.remove(list.files(get.value("filt_derep.1file.path"), full.name = T, pattern =".fasta"))
 
 cmd1 <- paste(paste(list.files(get.value("filt_derep.path"), full.names = T, pattern = "12s"), collapse = " "), 
              ">",
@@ -937,6 +969,8 @@ files <- list.files(get.value("filt_derep.1file.path"), full.names = T, pattern 
 new.files <- files %>% str_replace(get.value("filt_derep.1file.path"), get.value("OTU.usearch")) %>% 
                        str_replace("_derep.fasta", "_OTU.fasta")
 
+file.remove(list.files(get.value("OTU.usearch"), full.name = T, pattern ="_OTU"))
+
 
 for(x in 1:length(files)){
 
@@ -981,6 +1015,9 @@ usearch_global <- function(files, new.files, DB) {
   } 
   
 } # fin de la fonction
+
+file.remove(list.files(get.value("Compare.OTU.usearch"), full.name = T, pattern =".txt"))
+file.remove(list.files(get.value("Compare.OTU.usearch.log"), full.name = T, pattern =".txt"))
 
 # 12S
 
@@ -1039,26 +1076,26 @@ make.OTU.table <- function(files, fasta){
    tab <- tab[mixedorder(tab$ID),]
    tab[,1:2]
    
-   DNA <- readDNAStringSet(fasta)
+   #DNA <- readDNAStringSet(fasta)
    
-   row.names(tab) <- as.character(DNA)
+   #row.names(tab) <- as.character(DNA)
    
    return(tab)
 
 }
 
-file1 <- list.files(get.value("Compare.OTU.usearch"), pattern = "12s", full.names = T)
-file2 <- list.files(get.value("Compare.OTU.usearch"), pattern = "cytB", full.names = T) %>% str_subset("R1")
-file2 <- list.files(get.value("Compare.OTU.usearch"), pattern = "cytB", full.names = T) %>% str_subset("R2")
+files1 <- list.files(get.value("Compare.OTU.usearch"), pattern = "12s", full.names = T)
+files2 <- list.files(get.value("Compare.OTU.usearch"), pattern = "cytB", full.names = T) %>% str_subset("R1")
+files3 <- list.files(get.value("Compare.OTU.usearch"), pattern = "cytB", full.names = T) %>% str_subset("R2")
 
 fasta1 <- list.files(get.value("OTU.usearch"), pattern = "_OTU.fasta", full.names = T) %>% str_subset("12s")
 fasta2 <- list.files(get.value("OTU.usearch"), pattern = "_OTU.fasta", full.names = T) %>% str_subset("cytB.R1")
 fasta3 <- list.files(get.value("OTU.usearch"), pattern = "_OTU.fasta", full.names = T) %>% str_subset("cytB.R2")
 
 
-OTUtab.12s     <- make.OTU.table(file1, fasta1)
-OTUtab.cytB.R1 <- make.OTU.table(file2, fasta2)
-OTUtab.cytB.R1 <- make.OTU.table(file3, fasta3)
+OTUtab.12s     <- make.OTU.table(files1, fasta1)
+OTUtab.cytB.R1 <- make.OTU.table(files2, fasta2)
+OTUtab.cytB.R2 <- make.OTU.table(files3, fasta3)
 
 save(file = get.value("OTUtable.data"), 
      list = ls(pattern = "OTUtab."))
@@ -1235,6 +1272,11 @@ cat("OTU tables were created:",
 # 
 # 
 
+# WHAT I WILL DO
+
+#ShortRead::countLines(get.value("filt_dada2.path"), pattern = "12s_Sample_Che")/4
+
+
 
 # END of the script -------------------------------------------------------
 
@@ -1266,11 +1308,16 @@ cat("\nEND of the raw data processing!",
 
 if(get_os() %in% c("os","linux")){ # to run only on os and not windows
   
-  A <- system2("fastqc", "-v", stdout=T, stderr=T)
-  B <- system2("cutadapt", "-v", stdout=T, stderr=T)
-  C <- system2("vsearch", "-v", stdout=T, stderr=T)  
-  D <- system2("usearch", "-v", stdout=T, stderr=T)  
-  
+  cat(paste("fastqc", system2("fastqc", "-v", stdout=T, stderr=T), sep = ": "),     
+      paste("cutadapt", system2("cutadapt", "--version", stdout=T, stderr=T), sep = ": "),     
+      paste("vsearch", system2("vsearch", "-v", stdout=T, stderr=T)[1] , sep = ": "),   
+      paste("usearch", system2("usearch", "--version", stdout=T, stderr=T) , sep = ": "),      
+      "\n-------------------------\n", 
+            # Add it to the log file
+      file=get.value("Raw.log"), 
+      append = T, sep = "\n")
+
+
 }
 
 # END OF THE SCRIPT

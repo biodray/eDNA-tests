@@ -20,10 +20,10 @@ for(i in 1:length( list.files("./03_Functions") )){
 
 # Data --------------------------------------------------------------------
 
-info.path <- get.value("info.path")
-Sample.xl <- get.value("Sample.xl")
+#info.path <- get.value("info.path")
+#Sample.xl <- get.value("Sample.xl")
 
-raw_unz.path <- get.value("raw_unz.path")
+#raw_unz.path <- get.value("raw_unz.path")
 
 DataSample <- read_excel(get.value("Sample.xl"),sheet="DataSample",na="NA",guess_max=100000)
 DataSeq    <- read_excel(get.value("Sample.xl"),sheet="DataSeq",na="NA",guess_max=100000)
@@ -43,6 +43,14 @@ unique(DataSeq$Name)
 
 # Unzipped files if necessary ---------------------------------------------
 
+switch(menu(title = "Do you want to unzipped fastq files? It will takes some times ...", graphics = F, 
+            choice = c("yes", "no")
+)+1,
+# Answer 0
+cat("Nothing done\n"),
+# Answer 1 - YES!
+
+{
 # Enlever les fichiers du dossier (unz)
 
 file.remove(list.files(get.value("raw_unz.path"), full.name = T, pattern =".fastq"))
@@ -56,7 +64,9 @@ file.copy(list.files(get.value("raw.path"), full.name = T, pattern = "fastq"),
 # Unzip (fonctionne sur linux, pê pas sur windows)
 system2("gunzip", paste(file.path(list.files(get.value("raw_unz.path"), full.name = T, pattern =".fastq"))))
 
-
+},
+cat("Nothing done\n"),
+)
 # Create new files names --------------------------------------------------
 
 # Get the current names of unzipped files
@@ -99,10 +109,21 @@ new.names.final
 
 # Change files names ------------------------------------------------------
 
+switch(menu(title = "Are you sure you want to modify fastq file names? It will takes some times", graphics = F, 
+            choice = c("yes", "no")
+)+1,
+# Answer 0
+cat("Nothing done\n"),
+# Answer 1 - YES!
+{
 # Enlever les fichiers précédents (unz)
+cat("\nOld files are removed", sep = "\n")
+  
 file.remove(list.files(get.value("raw_unz_rename.path"), full.name = T, pattern =".fastq"))
 
 # Copier unz -> unz_rename (can take some times)
+
+cat("\nNew files are copied", sep = "\n")
 
 file.copy(list.files(get.value("raw_unz.path"), full.name = T, pattern = "fastq"),
           file.path(get.value("raw_unz_rename.path"), list.files(get.value("raw_unz.path"), full.name = F, pattern = "fastq"))
@@ -110,6 +131,13 @@ file.copy(list.files(get.value("raw_unz.path"), full.name = T, pattern = "fastq"
 
 # Renommer unz_rename
 
+cat("\nNew files are renamed", sep = "\n")
+
 file.rename(file.path(get.value("raw_unz_rename.path"), files.names),
             file.path(get.value("raw_unz_rename.path"), new.names.final)
             )
+
+},
+# Answer 2 - NO!
+cat("Nothing done\n"),
+)
