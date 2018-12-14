@@ -827,13 +827,6 @@ cat("Data were saved:",
     append = T, sep = "\n") 
 
 
-load(get.value("ASVtable.data"))
-
-
-
-# Save Seqtab somewhere!!
-
-
 # 4. FILT to OTU (usearch inspired by JAMP)-------------------------------------------------------------
 
 # 4.1 Umerge
@@ -1113,14 +1106,34 @@ fasta1 <- list.files(get.value("OTU.usearch"), pattern = "_OTU.fasta", full.name
 fasta2 <- list.files(get.value("OTU.usearch"), pattern = "_OTU.fasta", full.names = T) %>% str_subset("cytB.R1")
 fasta3 <- list.files(get.value("OTU.usearch"), pattern = "_OTU.fasta", full.names = T) %>% str_subset("cytB.R2")
 
-
 OTUtab.12s     <- make.OTU.table(files1, fasta1)
 OTUtab.cytB.R1 <- make.OTU.table(files2, fasta2)
 OTUtab.cytB.R2 <- make.OTU.table(files3, fasta3)
 
+# Add seq as row name (similarly to dada2 output)
+
+seq.to.rowname <- function(tab, fasta){
+
+  DNA <- readDNAStringSet(fasta)
+
+  for(x in 1:nrow(tab)){
+    OTU <- tab[x,"ID"]
+  
+    seq <- DNA[OTU]
+  
+    row.names(tab)[x] <- as.character(seq)
+   
+  }
+  
+  return(tab)
+}
+
+OTUtab.12s <- seq.to.rowname(OTUtab.12s, fasta1)
+OTUtab.cytB.R1 <- seq.to.rowname(OTUtab.cytB.R1, fasta2)
+OTUtab.cytB.R2 <- seq.to.rowname(OTUtab.cytB.R2, fasta3)
+
 save(file = get.value("OTUtable.data"), 
      list = ls(pattern = "OTUtab."))
-
 
 cat("OTU tables were created:",
     get.value("OTU.usearch"),
