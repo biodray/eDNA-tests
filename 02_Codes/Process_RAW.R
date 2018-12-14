@@ -654,8 +654,6 @@ cat("Nothing done\n"),
 cat("\nFILT data quality plot were not saved\n\n")
 )
 
-#load("today.RData")
-#save.image("today.RData")
 
 # 3. FILT to ASV (denoise with DADA2) --------------------------------------------------
 
@@ -782,6 +780,24 @@ ASVtab.cytB.F <- removeBimeraDenovo(seqtab.cytB.F.int, method = "consensus",
 ASVtab.cytB.R <- removeBimeraDenovo(seqtab.cytB.R.int, method = "consensus", 
                                     multithread = FALSE, verbose = TRUE)   
 
+# Write results
+
+write.dada2.res <- function(tab, name, folder){
+
+  file1 <- file.path(folder, paste0("all.", name, "_ASV.fasta"))
+  file2 <- file1 %>% str_replace(".fasta", "_ASVtable.txt")
+  
+  DNA <- DNAStringSet(getSequences(tab))
+  names(DNA) <- paste0("ASV_", 1:length(DNA))
+  
+  writeXStringSet(DNA, file1)
+  write.table(tab, file2)
+  
+}
+
+write.dada2.res(ASVtab.12s, "12s", get.value("ASV.dada2.path"))
+write.dada2.res(ASVtab.cytB.F, "cytB.R1", get.value("ASV.dada2.path"))
+write.dada2.res(ASVtab.cytB.R, "cytB.R2", get.value("ASV.dada2.path"))
 
 cat("Sequence tables were created and chimeric sequences were removed.",
     "\n", 
@@ -809,6 +825,11 @@ cat("Data were saved:",
     "\n-------------------------\n", 
     file=get.value("Raw.log"), 
     append = T, sep = "\n") 
+
+
+load(get.value("ASVtable.data"))
+
+
 
 # Save Seqtab somewhere!!
 
