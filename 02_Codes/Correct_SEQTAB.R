@@ -14,7 +14,7 @@
 
 library(tidyverse) # includes ggplot2 dplyr and stringr
 
-#library(gtools)    # for mixedsort
+library(gtools)    # for mixedsort
 library(readxl)
 mixed
 # Fastq and fasta manipulation
@@ -48,7 +48,7 @@ DataSeq    <- read_excel(get.value("Sample.xl"),sheet="DataSeq",na="NA",guess_ma
 
 head(OTUtab.12s[,1:3])
 
-tab <- ASVtab.12s
+
 
 SEQtable.df <- function(tab){
   
@@ -82,6 +82,7 @@ names(ASVtab.cytB.R2) <- names(ASVtab.cytB.R2) %>% simplify.col()
 names(OTUtab.12s)     <- names(OTUtab.12s) %>% simplify.col()
 names(OTUtab.cytB.R1) <- names(OTUtab.cytB.R1) %>% simplify.col()
 names(OTUtab.cytB.R2) <- names(OTUtab.cytB.R2) %>% simplify.col()
+
 
 names(ASVtab.12s) %>% str_subset("Tneg")
 
@@ -154,3 +155,65 @@ OTUtab.12s %>% select("ID",Sample) %>%
                ggplot(aes(x = sample, y = ID, fill = N)) + 
                geom_tile() + 
                scale_fill_distiller(palette = "Spectral")
+
+
+
+# PLaque
+
+plaque.graph <- function(tab, Sample = T, Tneg = T, Mix = T){
+  
+  Sample1 <- vector()
+  Tneg1   <- vector()
+  Mix1    <- vector()  
+  
+  Sample1 <- if(isTRUE(Sample)) names(tab) %>% str_subset("Sample")
+  
+  Tneg1   <- if(isTRUE(Tneg)) {
+    c(names(tab) %>% str_subset("Tneg"),
+      names(tab) %>% str_subset("T0"),
+      names(tab) %>% str_subset("T1"))
+  }
+  
+  
+  Mix1    <- if(isTRUE(Mix)) names(tab) %>% str_subset("Mix")
+  
+  #tab <- ASVtab.12s
+  
+  graph <- 
+    
+    tab %>% select("ID",Sample1, Tneg1, Mix1) %>%
+    gather(Sample1, Tneg1, Mix1, key = "sample", value = "N") %>% 
+    group_by(sample) %>% 
+    summarise(Sum = sum(N)) %>% 
+    mutate(puit = sapply(str_split(sample, "_p"),`[`,2) %>% str_remove("_R1") %>% str_remove("_R2"),
+           plaque = str_sub(puit, 1, 1),
+           rn = str_sub(puit, 3, 3),
+           cn = str_sub(puit, 4,5),
+           neg = ifelse(str_detect(sample, pattern = c("Tneg")), "neg.lab", 
+                 ifelse(str_detect(sample, pattern = c("T0")), "neg.field",
+                 ifelse(str_detect(sample, pattern = c("T1")), "neg.field", NA)))) %>% #View()
+  
+    
+    #filter(plaque == "2")  %>% 
+    ggplot(aes(x = cn, y = rn, fill = Sum)) + 
+    geom_bin2d() + 
+    scale_fill_distiller(palette = "Spectral", trans = "log10") +#+
+    scale_y_discrete("",limits=LETTERS[8:1]) +
+    scale_x_discrete("",limits=c(1:12)) + 
+    geom_point(aes(shape = neg)) +
+      facet_grid(plaque~.) +
+      theme_bw()
+    #theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+  print(graph)
+  
+}
+
+plaque.graph(ASVtab.12s)
+
+plaque.graph(ASVtab.cytB.R1)
+
+plaque.graph(ASVtab.cytB.R2)
+
+
+head(ASVtab.cytB.R1[,1:3])
