@@ -129,7 +129,7 @@ OTUtab.cytB.R2 <- add.missing(OTUtab.cytB.R2, "cytB", "R2")
 #                       theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
-rapid.graph <- function(tab, Sample = T, Tneg = T, Mix = T){
+rapid.graph <- function(tab, Sample = T, Tneg = T, Mix = T, maintitle = "Heatmap of sequence frequency"){
 
   Sample1 <- vector()
   Tneg1   <- vector()
@@ -153,15 +153,20 @@ graph <- tab %>% select("ID",Sample1, Tneg1, Mix1) %>%
                       geom_bin2d() + 
                       scale_fill_distiller(palette = "Spectral", trans = "log10") +
                       #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
-                      scale_y_discrete("Sequences", limits=mixedsort(tab$ID), labels = NULL) +
-                      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+                      scale_y_discrete(limits=mixedsort(tab$ID), labels = NULL) +
+                      labs(title= maintitle, x ="Sample", y = "Sequence ID") +
+  guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
+                      theme_bw()+
+                      theme(axis.text.x = element_text(angle = 90, hjust = 1),
+                            axis.ticks.y = element_blank())
 
 print(graph)
 
 }
 
 
-rapid.graph(ASVtab.12s)
+rapid.graph(OTUtab.12s, Sample = F, Tneg = F, Mix = T)
+rapid.graph(ASVtab.12s, Sample = F, Tneg = F, Mix = T)
 
 rapid.graph(ASVtab.cytB.R1)
 rapid.graph(ASVtab.cytB.R2)
@@ -169,6 +174,10 @@ rapid.graph(ASVtab.cytB.R2)
 rapid.graph(OTUtab.12s)
 rapid.graph(OTUtab.cytB.R1)
 rapid.graph(OTUtab.cytB.R2)
+
+
+rapid.graph(OTUtab.cytB.R1, Sample = F, Tneg = F, Mix = T)
+rapid.graph(ASVtab.cytB.R1, Sample = F, Tneg = F, Mix = T)
 
   
 # ?scale_y_discrete
@@ -185,7 +194,7 @@ rapid.graph(OTUtab.cytB.R2)
 
 # PLaque
 
-plaque.graph <- function(tab, Sample = T, Tneg = T, Mix = T){
+plaque.graph <- function(tab, Sample = T, Tneg = T, Mix = T, maintitle = "PCR plate"){
   
   Sample1 <- vector()
   Tneg1   <- vector()
@@ -224,7 +233,9 @@ plaque.graph <- function(tab, Sample = T, Tneg = T, Mix = T){
     geom_bin2d() + 
     scale_fill_distiller(palette = "Spectral", trans = "log10") +#+
     scale_y_discrete("",limits=LETTERS[8:1]) +
-    scale_x_discrete("",limits=c(1:12)) + 
+    scale_x_discrete("",limits=c(1:12), position = "top") + 
+    guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
+    labs(title= maintitle) +
     geom_point(aes(shape = neg)) +
       facet_grid(plaque~.) +
       theme_bw()
@@ -307,3 +318,11 @@ rapid.graph(ASVtab.cytB.R2.cor)
 rapid.graph(OTUtab.12s.cor)
 rapid.graph(OTUtab.cytB.R1.cor)
 rapid.graph(OTUtab.cytB.R2.cor) 
+
+
+
+# The code for mock community should be on another space?
+
+# Add a part on stats on negative control
+
+# Add title to my graphs
