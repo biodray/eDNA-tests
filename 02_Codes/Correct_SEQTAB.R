@@ -16,9 +16,14 @@ library(tidyverse) # includes ggplot2 dplyr and stringr
 
 library(gtools)    # for mixedsort
 library(readxl)
-mixed
+
+
+#library(devtools)
+#devtools::install_github("kassambara/ggpubr")
+library(ggpubr)    # on github - for nice graphs
+
 # Fastq and fasta manipulation
-library(Biostrings)
+#library(Biostrings)
 
 
 # Internal functions
@@ -27,25 +32,9 @@ for(i in 1:length( list.files("./03_Functions") )){
 }
 
 
-# Data --------------------------------------------------------------------
+# Functions ---------------------------------------------------------------
 
-
-load(get.value("ASVtable.data"))
-load(get.value("OTUtable.data"))
-
-DataSample <- read_excel(get.value("Sample.xl"),sheet="DataSample",na="NA",guess_max=100000)
-DataSeq    <- read_excel(get.value("Sample.xl"),sheet="DataSeq",na="NA",guess_max=100000)
-#Amorces    <- read_excel(get.value("Sample.xl"),sheet="Amorces",na="NA",guess_max=100000)
-#Inventaire <- read_excel(get.value("Sample.xl"),sheet="DataLac",na="NA",guess_max=100000)
-
-# Format de DataSeq avec les données IBIS (p1-A1)
-
-DataSeq <- DataSeq %>% mutate (IbisID = paste0(Plaque,".",Puit)) %>% 
-  left_join(DataSample %>% select(SampleID, NomLac, CatSite, Temoins), by = "SampleID")
-
-
-# Transform dada2 to a better format
-
+# Function to transform dada2 table on the other side 
 SEQtable.df <- function(tab){
   
   new.tab <- data.frame(t(tab))
@@ -54,11 +43,7 @@ SEQtable.df <- function(tab){
   return(new.tab)
 }
 
-ASVtab.12s     <- SEQtable.df(ASVtab.12s)
-ASVtab.cytB.R1 <- SEQtable.df(ASVtab.cytB.F)
-ASVtab.cytB.R2 <- SEQtable.df(ASVtab.cytB.R)
-
-
+# Function to remove superflues on a vector of names
 simplify.col <- function(x){
   
   x %>% str_remove(".fastq") %>% 
@@ -72,65 +57,27 @@ simplify.col <- function(x){
   
 }
 
-names(ASVtab.12s)     <- names(ASVtab.12s) %>% simplify.col() %>% str_remove("_R1")
-names(ASVtab.cytB.R1) <- names(ASVtab.cytB.R1) %>% simplify.col()
-names(ASVtab.cytB.R2) <- names(ASVtab.cytB.R2) %>% simplify.col()
-
-names(OTUtab.12s)     <- names(OTUtab.12s) %>% simplify.col()
-names(OTUtab.cytB.R1) <- names(OTUtab.cytB.R1) %>% simplify.col()
-names(OTUtab.cytB.R2) <- names(OTUtab.cytB.R2) %>% simplify.col()
-
-
-
-
-# add a column for each sample
-
-
+# Function to add a column to missing values
 add.missing <- function(tab, locus, sens = NULL){
-
-if(locus == "12s")  all.files <- list.files(get.value("raw_unz_rename.path"), pattern = "R1")  %>% str_remove("_R1.fastq") %>% str_subset(locus) %>% str_replace("-", ".")
-if(locus == "cytB") all.files <- list.files(get.value("raw_unz_rename.path"), pattern = sens)  %>% str_remove(".fastq") %>% str_subset(locus) %>% str_replace("-", ".")
-
-missing.files <- setdiff(all.files, names(tab))
-
-for(x in missing.files){
-  tab[,x] <- 0
+  
+  if(locus == "12s")  all.files <- list.files(get.value("raw_unz_rename.path"), pattern = "R1")  %>% str_remove("_R1.fastq") %>% str_subset(locus) %>% str_replace("-", ".")
+  if(locus == "cytB") all.files <- list.files(get.value("raw_unz_rename.path"), pattern = sens)  %>% str_remove(".fastq") %>% str_subset(locus) %>% str_replace("-", ".")
+  
+  missing.files <- setdiff(all.files, names(tab))
+  
+  for(x in missing.files){
+    tab[,x] <- 0
+    
+  }
+  
+  return(tab)
   
 }
 
-return(tab)
 
-}
-
-
-ASVtab.12s     <- add.missing(ASVtab.12s, "12s")
-ASVtab.cytB.R1 <- add.missing(ASVtab.cytB.R1, "cytB", "R1")
-ASVtab.cytB.R2 <- add.missing(ASVtab.cytB.R2, "cytB", "R2")
-
-OTUtab.12s     <- add.missing(OTUtab.12s, "12s")
-OTUtab.cytB.R1 <- add.missing(OTUtab.cytB.R1, "cytB", "R1")
-OTUtab.cytB.R2 <- add.missing(OTUtab.cytB.R2, "cytB", "R2")
-
-
-
-# Mix <- names(ASVtab.12s) %>% str_subset("Sample")
-# Sample <- names(ASVtab.12s) %>% str_subset("Sample")
-# Tneg   <- c(names(ASVtab.12s) %>% str_subset("Tneg"),
-#             names(ASVtab.12s) %>% str_subset("T0"),
-#             names(ASVtab.12s) %>% str_subset("T1"))
-# 
-# ASVtab.12s %>% select("ID",Tneg) %>%
-#                gather(Tneg, key = "sample", value = "N") %>% 
-#                       filter(N>=1)  %>% 
-#                ggplot(aes(x = sample, y = ID, fill = N)) + 
-#                       geom_bin2d() + 
-#                       scale_fill_distiller(palette = "Spectral") +
-#                       scale_y_discrete("ASV", limits=mixedsort(ASVtab.12s$ID), labels = NULL) +
-#                       theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-
+# Function to create a heatmap for each sample from a SEQtab
 rapid.graph <- function(tab, Sample = T, Tneg = T, Mix = T, maintitle = "Heatmap of sequence frequency"){
-
+  
   Sample1 <- vector()
   Tneg1   <- vector()
   Mix1    <- vector()  
@@ -138,62 +85,34 @@ rapid.graph <- function(tab, Sample = T, Tneg = T, Mix = T, maintitle = "Heatmap
   Sample1 <- if(isTRUE(Sample)) names(tab) %>% str_subset("Sample")
   
   Tneg1   <- if(isTRUE(Tneg)) {
-                c(names(tab) %>% str_subset("Tneg"),
-                              names(tab) %>% str_subset("T0"),
-                              names(tab) %>% str_subset("T1"))
-     }
-                             
+    c(names(tab) %>% str_subset("Tneg"),
+      names(tab) %>% str_subset("T0"),
+      names(tab) %>% str_subset("T1"))
+  }
+  
   
   Mix1    <- if(isTRUE(Mix)) names(tab) %>% str_subset("Mix")
   
-graph <- tab %>% select("ID",Sample1, Tneg1, Mix1) %>%
-               gather(Sample1, Tneg1, Mix1, key = "sample", value = "N") %>% 
-               filter(N>=1)  %>% 
-               ggplot(aes(x = sample, y = ID, fill = N)) + 
-                      geom_bin2d() + 
-                      scale_fill_distiller(palette = "Spectral", trans = "log10") +
-                      #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
-                      scale_y_discrete(limits=mixedsort(tab$ID), labels = NULL) +
-                      labs(title= maintitle, x ="Sample", y = "Sequence ID") +
-  guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
-                      theme_bw()+
-                      theme(axis.text.x = element_text(angle = 90, hjust = 1),
-                            axis.ticks.y = element_blank())
-
-print(graph)
-
+  graph <- tab %>% select("ID",Sample1, Tneg1, Mix1) %>%
+    gather(Sample1, Tneg1, Mix1, key = "sample", value = "N") %>% 
+    filter(N>=1)  %>% 
+    ggplot(aes(x = sample, y = ID, fill = N)) + 
+    geom_bin2d() + 
+    scale_fill_distiller(palette = "Spectral", trans = "log10") +
+    #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
+    scale_y_discrete(limits=mixedsort(tab$ID), labels = NULL) +
+    labs(title= maintitle, x ="Sample", y = "Sequence ID") +
+    guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
+    theme_bw()+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+          axis.ticks.y = element_blank())
+  
+  print(graph)
+  
 }
 
 
-rapid.graph(OTUtab.12s, Sample = F, Tneg = F, Mix = T)
-rapid.graph(ASVtab.12s, Sample = F, Tneg = F, Mix = T)
-
-rapid.graph(ASVtab.cytB.R1)
-rapid.graph(ASVtab.cytB.R2)
-
-rapid.graph(OTUtab.12s)
-rapid.graph(OTUtab.cytB.R1)
-rapid.graph(OTUtab.cytB.R2)
-
-
-rapid.graph(OTUtab.cytB.R1, Sample = F, Tneg = F, Mix = T)
-rapid.graph(ASVtab.cytB.R1, Sample = F, Tneg = F, Mix = T)
-
-  
-# ?scale_y_discrete
-# 
-# Sample <- names(OTUtab.12s) %>% str_subset("Sample")
-# 
-# OTUtab.12s %>% select("ID",Sample) %>%
-#                gather(Sample, key = "sample", value = "N") %>% 
-#                ggplot(aes(x = sample, y = ID, fill = N)) + 
-#                geom_tile() + 
-#                scale_fill_distiller(palette = "Spectral")
-# 
-# 
-
-# PLaque
-
+# Function to create a heatmap from a SEQtab
 plaque.graph <- function(tab, Sample = T, Tneg = T, Mix = T, maintitle = "PCR plate"){
   
   Sample1 <- vector()
@@ -224,38 +143,176 @@ plaque.graph <- function(tab, Sample = T, Tneg = T, Mix = T, maintitle = "PCR pl
            rn = str_sub(puit, 3, 3),
            cn = str_sub(puit, 4,5),
            neg = ifelse(str_detect(sample, pattern = c("Tneg")), "neg.lab", 
-                 ifelse(str_detect(sample, pattern = c("T0")), "neg.field",
-                 ifelse(str_detect(sample, pattern = c("T1")), "neg.field", NA)))) %>% #View()
-  
+                        ifelse(str_detect(sample, pattern = c("T0")), "neg.field",
+                               ifelse(str_detect(sample, pattern = c("T1")), "neg.field", NA)))) %>% #View()
+    
     
     #filter(plaque == "2")  %>% 
     ggplot(aes(x = cn, y = rn, fill = Sum)) + 
     geom_bin2d() + 
     scale_fill_distiller(palette = "Spectral", trans = "log10") +#+
+    scale_shape_discrete(limits= c("neg.field", "neg.lab"), labels = c("field", "lab"))+
     scale_y_discrete("",limits=LETTERS[8:1]) +
     scale_x_discrete("",limits=c(1:12), position = "top") + 
-    guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
+    guides(fill = guide_colourbar(title = "N reads", title.hjust = 0),
+           shape = guide_legend("Negative controls")) + 
     labs(title= maintitle) +
     geom_point(aes(shape = neg)) +
-      facet_grid(plaque~.) +
-      theme_bw()
-    #theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    facet_grid(plaque~., labeller = labeller(plaque = label_both)) +
+    theme_bw() +
+    theme(strip.background = element_rect(colour = "black", fill = "white"))
+  #theme(axis.text.x = element_text(angle = 90, hjust = 1))
   
   print(graph)
   
 }
 
-plaque.graph(ASVtab.12s)
+# Data --------------------------------------------------------------------
 
-plaque.graph(ASVtab.cytB.R1)
+load(get.value("ASVtable.data"))
+load(get.value("OTUtable.data"))
 
-plaque.graph(ASVtab.cytB.R2)
+DataSample <- read_excel(get.value("Sample.xl"),sheet="DataSample",na="NA",guess_max=100000)
+DataSeq    <- read_excel(get.value("Sample.xl"),sheet="DataSeq",na="NA",guess_max=100000)
+#Amorces    <- read_excel(get.value("Sample.xl"),sheet="Amorces",na="NA",guess_max=100000)
+#Inventaire <- read_excel(get.value("Sample.xl"),sheet="DataLac",na="NA",guess_max=100000)
+
+# Format de DataSeq avec les données IBIS (1.1)
+
+DataSeq <- DataSeq %>% mutate (IbisID = paste0(Plaque,".",Puit)) %>% 
+  left_join(DataSample %>% select(SampleID, NomLac, CatSite, Temoins), by = "SampleID")
 
 
-head(ASVtab.cytB.R2[,1:3])
+# Data transformation -----------------------------------------------------
+
+# Transform dada2 results as OTU result
+ASVtab.12s     <- SEQtable.df(ASVtab.12s)
+ASVtab.cytB.R1 <- SEQtable.df(ASVtab.cytB.F)
+ASVtab.cytB.R2 <- SEQtable.df(ASVtab.cytB.R)
 
 
-# Commencer différentes tactiques pour enlever des reads - soit le N max, ou encore le N associé à chaque journée
+# Simplifyin column names
+names(ASVtab.12s)     <- names(ASVtab.12s) %>% simplify.col() %>% str_remove("_R1")
+names(ASVtab.cytB.R1) <- names(ASVtab.cytB.R1) %>% simplify.col()
+names(ASVtab.cytB.R2) <- names(ASVtab.cytB.R2) %>% simplify.col()
+
+names(OTUtab.12s)     <- names(OTUtab.12s) %>% simplify.col()
+names(OTUtab.cytB.R1) <- names(OTUtab.cytB.R1) %>% simplify.col()
+names(OTUtab.cytB.R2) <- names(OTUtab.cytB.R2) %>% simplify.col()
+
+
+# Add a column for each missing samples
+
+ASVtab.12s     <- add.missing(ASVtab.12s, "12s")
+ASVtab.cytB.R1 <- add.missing(ASVtab.cytB.R1, "cytB", "R1")
+ASVtab.cytB.R2 <- add.missing(ASVtab.cytB.R2, "cytB", "R2")
+
+OTUtab.12s     <- add.missing(OTUtab.12s, "12s")
+OTUtab.cytB.R1 <- add.missing(OTUtab.cytB.R1, "cytB", "R1")
+OTUtab.cytB.R2 <- add.missing(OTUtab.cytB.R2, "cytB", "R2")
+
+# Make cool graphs
+
+pdf(file.path(get.value("result.OTUtables"),"SEQheatmap.raw.pdf"), width = 11, height = 8.5)
+  
+  rapid.graph(ASVtab.12s, maintitle = "Heatmap of ASV frequency - 12S on raw data")
+  rapid.graph(ASVtab.cytB.R1, maintitle = "Heatmap of ASV frequency - cytB.R1 on raw data")
+  rapid.graph(ASVtab.cytB.R2, maintitle = "Heatmap of ASV frequency - cytB.R2 on raw data")
+  
+  rapid.graph(OTUtab.12s, maintitle = "Heatmap of OTU frequency - 12S on raw data")
+  rapid.graph(OTUtab.cytB.R1, maintitle = "Heatmap of OTU frequency - cytB.R1 on raw data")
+  rapid.graph(OTUtab.cytB.R2, maintitle = "Heatmap of OTU frequency - cytB.R2 on raw data")
+
+dev.off()
+
+# Plaque PCR
+
+pdf(file.path(get.value("result.OTUtables"),"PCRheatmap.raw.pdf"), width = 11, height = 8.5)
+
+  plaque.graph(ASVtab.12s, maintitle = "PCR plates heatmap - 12S on ASV raw data")
+  plaque.graph(ASVtab.cytB.R1, maintitle = "PCR plates heatmap - cytB.R1 on ASV raw data")
+  plaque.graph(ASVtab.cytB.R2, maintitle = "PCR plates heatmap - cytB.R2 on ASV raw data")
+  
+  plaque.graph(OTUtab.12s, maintitle = "PCR plates heatmap - 12S on OTU raw data")
+  plaque.graph(OTUtab.cytB.R1, maintitle = "PCR plates heatmap - cytB.R1 on OTU raw data")
+  plaque.graph(OTUtab.cytB.R2, maintitle = "PCR plates heatmap - cytB.R2 on OTU raw data")
+
+dev.off()
+
+
+# Study on negative values ------------------------------------------------
+
+extract.neg <- function(tab){
+
+  Tnega    <- names(tab) %>% str_subset("Tneg")
+  Tfield  <- c(names(tab) %>% str_subset("T0"),
+               names(tab) %>% str_subset("T1"))
+  
+  DATA <- tab %>% select("ID", Tnega, Tfield) %>%
+                  gather(Tnega,Tfield, key = "sample", value = "N") %>% 
+                  group_by(sample) %>% 
+                  summarise(Nreads = sum(N),
+                            Nseq = length(N[which(N>0)]))
+  
+  return(DATA)
+
+}
+
+extract.sample <- function(tab){
+  
+  Sample <- names(tab) %>% str_subset("Sample")
+  
+  DATA <- tab %>% select("ID", Sample) %>%
+    gather(Sample, key = "sample", value = "N") %>% 
+    group_by(sample) %>% 
+    summarise(Nreads = sum(N),
+              Nseq = length(N[which(N>0)]))
+  
+  return(DATA)
+  
+}
+
+compare.neg <- function(tab1, tab2, N, maintitle = "Comparison of ASV and OTU"){
+  DATA <- rbind(extract.sample(tab1) %>% mutate(data = "ASV") %>%  mutate(type = "sample"),
+                     extract.neg(tab1) %>% mutate(data = "ASV") %>%  mutate(type = "negative"),
+                     extract.sample(tab2) %>% mutate(data = "OTU") %>%  mutate(type = "sample"),
+                     extract.neg(tab2) %>% mutate(data = "OTU")%>%  mutate(type = "negative")
+                     )
+
+  if(N == "Nreads"){
+    
+    GRAPH <- DATA %>% ggplot(aes(y = Nreads, x = data, col = type)) 
+                   
+  } else if(N == "Nseq"){
+      
+    GRAPH <- DATA %>% ggplot(aes(y = Nseq, x = data, col = type))  
+        
+  } else(stop()) 
+    
+  GRAPH <- GRAPH + geom_boxplot()+
+                   labs(title= maintitle) +
+                   theme_bw()
+    
+  print(GRAPH)
+
+}
+
+new.graph <-ggarrange(compare.neg(ASVtab.12s, OTUtab.12s, "Nreads", maintitle = "12S -  N reads"),
+                      compare.neg(ASVtab.12s, OTUtab.12s, "Nseq", maintitle = "12S - N sequences"),
+                      compare.neg(ASVtab.cytB.R1, OTUtab.cytB.R1, "Nreads", maintitle = "cytB.R1 - N reads"),
+                      compare.neg(ASVtab.cytB.R1, OTUtab.cytB.R1, "Nseq", maintitle = "cytB.R1 - N sequences"),
+                      compare.neg(ASVtab.cytB.R2, OTUtab.cytB.R2, "Nreads", maintitle = "cytB.R2 - N reads"),
+                      compare.neg(ASVtab.cytB.R2, OTUtab.cytB.R2, "Nseq", maintitle = "cytB.R2 - N sequences"),
+                      labels = LETTERS[1:6],
+                      ncol = 2, nrow = 3,
+                      common.legend = TRUE, legend = "right")
+
+pdf(file.path(get.value("result.OTUtables"),"ComparisonASV-OTU.pdf"), width = 8.5, height = 11)
+
+  new.graph 
+
+dev.off()
+
 
 # Corrections N reads for samples -----------------------------------------
 
@@ -274,7 +331,6 @@ correct.reads <- function(tab){
           gather(Sample, Tnega, Tfield, Mix, key = "sample", value = "N") %>% 
           mutate(IbisID = sapply(str_split(sample, "_p"),`[`,2) %>% str_remove("_R1") %>% str_remove("_R2") %>% str_replace("-", ".")) %>%  
           left_join(DataSeq %>% select(IbisID, SampleID, SeqType, Tneg, Temoins), by = "IbisID") 
-  
   
   DATA.Tneg   <- DATA %>% filter(sample %in% c(Tnega)) %>% select(ID, N, SampleID)
   DATA.Tfield <- DATA %>% filter(sample %in% c(Tfield)) %>% select(ID, N, SampleID)
@@ -301,28 +357,36 @@ OTUtab.cytB.R1.cor <- correct.reads(OTUtab.cytB.R1)
 OTUtab.cytB.R2.cor <- correct.reads(OTUtab.cytB.R2) 
 
 
-plaque.graph(ASVtab.12s.cor)
-plaque.graph(ASVtab.cytB.R1.cor)
-plaque.graph(ASVtab.cytB.R2.cor)
+pdf(file.path(get.value("result.OTUtables"),"SEQheatmap.corrected.pdf"), width = 11, height = 8.5)
 
-plaque.graph(OTUtab.12s.cor)
-plaque.graph(OTUtab.cytB.R1.cor)
-plaque.graph(OTUtab.cytB.R2.cor) 
+  rapid.graph(ASVtab.12s.cor, maintitle = "Heatmap of ASV frequency - 12S on corrected data")
+  rapid.graph(ASVtab.cytB.R1.cor, maintitle = "Heatmap of ASV frequency - cytB.R1 on corrected data")
+  rapid.graph(ASVtab.cytB.R2.cor, maintitle = "Heatmap of ASV frequency - cytB.R2 on corrected data")
+  
+  rapid.graph(OTUtab.12s.cor, maintitle = "Heatmap of OTU frequency - 12S on corrected data")
+  rapid.graph(OTUtab.cytB.R1.cor, maintitle = "Heatmap of OTU frequency - cytB.R1 on corrected data")
+  rapid.graph(OTUtab.cytB.R2.cor, maintitle = "Heatmap of OTU frequency - cytB.R2 on corrected data")
+
+dev.off()
+
+# Plaque PCR
+
+pdf(file.path(get.value("result.OTUtables"),"PCRheatmap.corrected.pdf"), width = 11, height = 8.5)
+
+  plaque.graph(ASVtab.12s.cor, maintitle = "PCR plates heatmap - 12S on ASV corrected data")
+  plaque.graph(ASVtab.cytB.R1.cor, maintitle = "PCR plates heatmap - cytB.R1 on ASV corrected data")
+  plaque.graph(ASVtab.cytB.R2.cor, maintitle = "PCR plates heatmap - cytB.R2 on ASV corrected data")
+  
+  plaque.graph(OTUtab.12s.cor, maintitle = "PCR plates heatmap - 12S on OTU corrected data")
+  plaque.graph(OTUtab.cytB.R1.cor, maintitle = "PCR plates heatmap - cytB.R1 on OTU corrected data")
+  plaque.graph(OTUtab.cytB.R2.cor, maintitle = "PCR plates heatmap - cytB.R2 on OTU corrected data")
+
+dev.off()
 
 
 
-rapid.graph(ASVtab.12s.cor)
-rapid.graph(ASVtab.cytB.R1.cor)
-rapid.graph(ASVtab.cytB.R2.cor)
-
-rapid.graph(OTUtab.12s.cor)
-rapid.graph(OTUtab.cytB.R1.cor)
-rapid.graph(OTUtab.cytB.R2.cor) 
+# The code for mock community should be on another space? Maybe only after assigning species
 
 
 
-# The code for mock community should be on another space?
 
-# Add a part on stats on negative control
-
-# Add title to my graphs
