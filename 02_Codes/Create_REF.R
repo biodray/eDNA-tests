@@ -2,7 +2,7 @@
 
 # Code pour creer la liste de reference
 # Audrey Bourret
-# 31 octobre 2018
+# 31 octobre 2018 - update january 2019
 
 # Packages ----------------------------------------------------------------
 
@@ -20,7 +20,10 @@ library(seqinr)
 #library(dada2); packageVersion("dada2")
 
 # Internal functions
-source(file.path("./03_Functions",  list.files("./03_Functions")))
+for(i in 1:length( list.files("./03_Functions") )){
+  source(file.path("./03_Functions",  list.files("./03_Functions")[i]))  
+}
+
 
 # Path --------------------------------------------------------------------
 
@@ -34,8 +37,6 @@ path.LABO    <- "Sequences/Sequences_LABO_finales"
 Sample.xl <- "DB_Echantillons.xlsx"
 
 # Functions ---------------------------------------------------------------
-
-source(file.path(biodiv.path, "R/fct_merge_sequences.R"))
 
 # Ajouter la taxonomie a un fichier fasta
 add_taxo <- function(fn, TAXO.REF = REF, fn.new = NULL, verbose = FALSE){
@@ -252,27 +253,27 @@ rapid_tree <- function(SEQ, TITLE = "This is a rapide tree"){
 # Data --------------------------------------------------------------------
 
 # Obtenir les sequences des amorces
-Labo.xls       <- list.files(path = file.path(biodiv.path), pattern = "_LABO_")
-Labo.amorces   <- read_excel(file.path(biodiv.path,Labo.xls),sheet="Amorces",na="NA",guess_max=100000)
+Labo.xls       <- list.files(path = get.value("biodiv.path"), pattern = "_LABO_", full.names = T)
+Labo.amorces   <- read_excel(Labo.xls,sheet="Amorces",na="NA",guess_max=100000)
 
 Labo.amorces 
 
 
 # Obtenir la liste des fichiers fasta
-files.seq      <- c(list.files(file.path(biodiv.path, path.EXTERNE)),
-                    list.files(file.path(biodiv.path, path.LABO))
+files.seq      <- c(list.files(get.value("path.EXTERNE")),
+                    list.files(get.value("path.LABO"))
                     )
 
 files.seq [1:6]
 
 # La même liste, mais avec le chemin d'accès
-files.seq.wPATH <- c(file.path(biodiv.path,path.EXTERNE, list.files(file.path(biodiv.path, path.EXTERNE))),
-                     file.path(biodiv.path,path.LABO, list.files(file.path(biodiv.path, path.LABO)))
+files.seq.wPATH <- c(list.files(get.value("path.EXTERNE"), full.names = T),
+                     list.files(get.value("path.LABO"), full.names = T)
                      )
+
 files.seq.wPATH[1:6] 
 
-
-SP.QC <- read_excel(file.path(data.path,Sample.xl),sheet="Especes",na="NA",guess_max=100000)
+SP.QC <- read_excel(get.value("Sample.xl"),sheet="Especes",na="NA",guess_max=100000)
 SP.QC$QC <- "QC"
 SP.QC <- SP.QC %>%  mutate(PC = ifelse(PC == 1, "PC", NA))
 
@@ -282,9 +283,9 @@ SP.QC
 SP <- SP.QC %>% filter(PC == 1) %>% select(Espece) %>% pull()
 
 # Fichier reference taxo - la boucle permet de verifier si le fichier a bien ete lu
-REF <- read_csv(file.path(biodiv.path,"Reference_taxonomie.csv"))
+REF <- read_csv(get.value("RefTAXO"))
 if(ncol(REF) == 1 ) {
-  REF <- read_csv2(file.path(biodiv.path,"Reference_taxonomie.csv"))
+  REF <- read_csv2(get.value("RefTAXO"))
 }
 REF
 
@@ -297,15 +298,17 @@ REF <- REF %>% left_join(SP.QC, by = "Espece")
 # References --------------------------------------------------------------
 
 # Paramètre de ce que je veux faire
-#PARAM <- expand.grid(LOCUS = c("12S"), GROUP = c("All"), PRIMER = c("ecoPrimer"))
 
-PARAM <- expand.grid(LOCUS = c("12S"), GROUP = c("PC", "QC", "All"), PRIMER = c("ecoPrimer", "MiFish"))
+PARAM <- expand.grid(LOCUS = c("12S"), GROUP = c("QC", "All"), PRIMER = c("ecoPrimer"))
+#PARAM <- expand.grid(LOCUS = c("12S"), GROUP = c("All"), PRIMER = c("ecoPrimer"))
+#PARAM <- expand.grid(LOCUS = c("12S"), GROUP = c("PC", "QC", "All"), PRIMER = c("ecoPrimer", "MiFish"))
+
 PARAM$PRIMER.LAB <- paste(PARAM$LOCUS, str_sub(PARAM$PRIMER, 1,3), sep="-")
-PARAM$NMIS <- ifelse(PARAM$PRIMER == "MiFish",5,3)
+PARAM$NMIS <- 3
 PARAM
 
+PARAM <- rbind(PARAM,expand.grid(LOCUS = c("CYTB"), GROUP = c("QC", "All"), PRIMER = c("Kotcher"), PRIMER.LAB = c("CYTB-Kot"), NMIS = 14))
 #PARAM <- rbind(PARAM,expand.grid(LOCUS = c("CYTB"), GROUP = c("PC", "QC", "All"), PRIMER = c("Kotcher"), PRIMER.LAB = c("CYTB-Kot"), NMIS = 14))
-#PARAM
 #PARAM <- expand.grid(LOCUS = c("CYTB"), GROUP = c("PC", "QC", "All"), PRIMER = c("Kotcher"), PRIMER.LAB = c("CYTB-Kot"), NMIS = 14)
 
 # Boucle pour faire rouler le tout
@@ -322,43 +325,97 @@ for(x in 1:nrow(PARAM[,])){
                   GROUP = as.character(PARAM$GROUP[x]), 
                   LIST = files.seq, 
                   LISTwPATH = files.seq.wPATH, 
-                  PATH = file.path(path.group), 
+                  PATH = get.value("ref.path"), 
                   FN = PARAM$PRIMER.LAB[x],
                   BUFFER = 0, 
                   REF = REF %>% filter(as.character(PARAM$GROUP[x]) == as.character(PARAM$GROUP[x])), 
                   LAB = Labo.amorces %>% filter(NomCommun == PARAM$PRIMER[x]), 
-                  KEEP =  FALSE,
+                  KEEP =  TRUE, # Pour garder ceux qui fit pas
                   NMIS = PARAM$NMIS[x],
                   verbose = TRUE)
   
   # Liste des fichiers
   
-  FN    <- paste0(as.character(PARAM$GROUP[x]),"_",PARAM$PRIMER.LAB[x],".fasta")
-  FN.SP <- paste0(as.character(PARAM$GROUP[x]),"_",PARAM$PRIMER.LAB[x],"_SP.fasta")
-  FN.TX <- paste0(as.character(PARAM$GROUP[x]),"_",PARAM$PRIMER.LAB[x],"_taxo.fasta")  
+  #FN    <- paste0(as.character(PARAM$GROUP[x]),"_",PARAM$PRIMER.LAB[x],".fasta")
+  #FN.SP <- paste0(as.character(PARAM$GROUP[x]),"_",PARAM$PRIMER.LAB[x],"_SP.fasta")
+  #FN.TX <- paste0(as.character(PARAM$GROUP[x]),"_",PARAM$PRIMER.LAB[x],"_taxo.fasta")  
   
   # ADD SP
-  add_species(fn = file.path(path.group, FN), fn.new = file.path(path.group, FN), REF = REF)
+  #add_species(fn = file.path(get.value("ref.path"), FN), fn.new = file.path(get.value("ref.path"), FN), REF = REF)
   
   # Get unique
-  SEQ.INFO[[ID]] <- get_uniqueSeq(fn = file.path(path.group, FN), fn.new = file.path(path.group, FN.SP))
+  #SEQ.INFO[[ID]] <- get_uniqueSeq(fn = file.path(get.value("ref.path"), FN), fn.new = file.path(get.value("ref.path"), FN.SP))
   
   # ADD taxo
-  add_taxo(fn = file.path(path.group, FN.SP), fn.new = file.path(path.group, FN.TX))
+  #add_taxo(fn = file.path(get.value("ref.path"), FN.SP), fn.new = file.path(get.value("ref.path"), FN.TX))
   
-  cat(paste0("\nDone!: ", length(SEQ.INFO[[ID]]$refseq), " sequences gardees.\n"))
+ # cat(paste0("\nDone!: ", length(SEQ.INFO[[ID]]$refseq), " sequences gardees.\n"))
 
 }
 
 
-# All_ALL
+# Create alignment to hand edit my stuff
 
-All.ALL <- readDNAStringSet(files.seq.wPATH)
+all.files <- list.files(get.value("ref.path"), pattern = "All_", full.names=T) 
 
-writeXStringSet(All.ALL, file.path(path.group, "All_ALL.fasta"))
+ALIGN <- list()
 
-add_species(fn = file.path(path.group, "All_ALL.fasta"), fn.new = file.path(path.group, "All_ALL.fasta"), REF = REF)
-add_taxo(fn = file.path(path.group, "All_ALL.fasta"), fn.new = file.path(path.group, "All_ALL_taxo.fasta"))
+for(x in all.files){
+  print(x)  
+  name <- str_replace(x, ".fasta", "_align.fasta")
+  
+  DNA   <- readDNAStringSet(x)
+  
+  #DNA <- c(DNA, COI.F, COI.R)
+  
+  if(length(DNA) == 1){
+    res <- DNA
+    writeXStringSet(res, name)
+    
+  } else {
+    res <- msa(DNA, method = "ClustalW")
+    writeXStringSet(res@unmasked, name)
+  } 
+  
+  ALIGN[[x]] <- res
+
+}
+
+# Then open them by hand to have a look... and create an alignement already without my primers
+
+complete.files <- list.files(get.value("ref.path"), pattern = "All_", full.names=T) %>% str_subset("complete.fasta")
+complete.files
+subset.files <- list.files(get.value("ref.path"), pattern = "QC_", full.names=T) 
+subset.files
+
+# Then, select in my subset the ones that I want to keep
+
+for(x in 1:length(complete.files)){
+
+  DNAsub <- readDNAStringSet(subset.files[x])
+  DNAcom <- readDNAStringSet(complete.files[x])
+  
+  # a Few name change because MEGA change my names ...
+  names(DNAcom) <- names(DNAcom) %>% str_replace_all("_", " ") %>% str_remove_all(",")
+  names(DNAsub) <- names(DNAsub) %>% str_replace_all("_", " ") %>% str_remove_all(",")
+  
+  print(length(names(DNAsub)))
+  print(length(names(DNAcom)))
+  
+  new.sub <- intersect(sort(names(DNAsub)), sort(names(DNAcom)))
+  
+  print(length(new.sub))
+  
+  writeXStringSet(DNAcom, complete.files[x])
+  writeXStringSet(DNAsub[new.sub], subset.files[x] %>% str_replace(".fasta", "complete.fasta"))
+
+}
+
+# Now its time to changes my files as in my previous loop
+
+
+
+
 
 
 # Verifier les doublons inter-sp et les ajouter à la main

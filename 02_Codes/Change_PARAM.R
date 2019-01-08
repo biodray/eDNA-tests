@@ -64,6 +64,11 @@ add.param(PARAM) <- c("ref.path", "./00_Data/05_RefSeq")
 
 
 
+add.param(PARAM) <- c("biodiv.path", "S:/Genpop/01-Projets de recherche/08-Banque reference biodiversite ESTL GSTL 2017-")
+add.param(PARAM) <- c("path.EXTERNE", "S:/Genpop/01-Projets de recherche/08-Banque reference biodiversite ESTL GSTL 2017-/Sequences/Sequences_EXTERNE")
+add.param(PARAM) <- c("path.LABO",  "S:/Genpop/01-Projets de recherche/08-Banque reference biodiversite ESTL GSTL 2017-/Sequences/Sequences_LABO_finales")
+
+
 # Results
 
 add.param(PARAM) <- c("result.path", "./01_Results")
@@ -83,6 +88,8 @@ write.csv2(PARAM, file = file.path("./04_Log", "Options.csv"), row.names=F)
 # Files -------------------------------------------------------------------
 
 add.param(PARAM) <- c("Sample.xl", paste(get.value("info.path"),"DB_Echantillons.xlsx", sep = "/"))
+
+add.param(PARAM) <- c("RefTAXO", paste(get.value("biodiv.path"),"Reference_taxonomie.csv", sep = "/"))
 
 add.param(PARAM) <- c("Raw.log", paste(get.value("log.path"),"Process_RAW.log.txt", sep = "/"))
 
