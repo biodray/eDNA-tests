@@ -25,6 +25,7 @@
 "result.Q.path";"./01_Results/02_ReadsQ"
 "result.FQraw.path";"./01_Results/02_ReadsQ/FastQC_Raw"
 "result.OTUtables";"./01_Results/03_OTUtables"
+"result.ref";"./01_Results/04_Ref"
 "log.path";"./04_Log"
 "Sample.xl";"./00_Data/00_FileInfos/DB_Echantillons.xlsx"
 "RefTAXO";"S:/Genpop/01-Projets de recherche/08-Banque reference biodiversite ESTL GSTL 2017-/Reference_taxonomie.csv"

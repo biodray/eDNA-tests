@@ -16,6 +16,11 @@ library(ape)
 library(seqinr)
 #library(gtools)
 
+#library(devtools)
+#devtools::install_github("kassambara/ggpubr")
+library(ggpubr)   
+
+
 #library(ShortRead)
 #library(dada2); packageVersion("dada2")
 
@@ -310,10 +315,9 @@ PARAM
 PARAM <- rbind(PARAM,expand.grid(LOCUS = c("CYTB"), GROUP = c("QC", "All"), PRIMER = c("Kotcher"), PRIMER.LAB = c("CYTB-Kot"), NMIS = 14))
 #PARAM <- rbind(PARAM,expand.grid(LOCUS = c("CYTB"), GROUP = c("PC", "QC", "All"), PRIMER = c("Kotcher"), PRIMER.LAB = c("CYTB-Kot"), NMIS = 14))
 #PARAM <- expand.grid(LOCUS = c("CYTB"), GROUP = c("PC", "QC", "All"), PRIMER = c("Kotcher"), PRIMER.LAB = c("CYTB-Kot"), NMIS = 14)
+PARAM
 
 # Boucle pour faire rouler le tout
-
-SEQ.INFO <- list()
 
 for(x in 1:nrow(PARAM[,])){
   ID <- paste(as.character(PARAM$GROUP[x]), PARAM$PRIMER.LAB[x], sep="_")
@@ -396,8 +400,8 @@ for(x in 1:length(complete.files)){
   DNAcom <- readDNAStringSet(complete.files[x])
   
   # a Few name change because MEGA change my names ...
-  names(DNAcom) <- names(DNAcom) %>% str_replace_all("_", " ") %>% str_remove_all(",")
-  names(DNAsub) <- names(DNAsub) %>% str_replace_all("_", " ") %>% str_remove_all(",")
+  names(DNAcom) <- names(DNAcom) %>% str_replace_all("_", " ") %>% str_remove_all(",") %>% str_replace("NC ", "NC_")
+  names(DNAsub) <- names(DNAsub) %>% str_replace_all("_", " ") %>% str_remove_all(",") %>% str_replace("NC ", "NC_")
   
   print(length(names(DNAsub)))
   print(length(names(DNAcom)))
@@ -407,102 +411,130 @@ for(x in 1:length(complete.files)){
   print(length(new.sub))
   
   writeXStringSet(DNAcom, complete.files[x])
-  writeXStringSet(DNAsub[new.sub], subset.files[x] %>% str_replace(".fasta", "complete.fasta"))
+  writeXStringSet(DNAsub[new.sub], subset.files[x] %>% str_replace(".fasta", "_complete.fasta"))
 
 }
 
 # Now its time to changes my files as in my previous loop
 
+complete.files <- list.files(get.value("ref.path"), pattern = "complete.fasta", full.names=T) #%>% str_subset("complete.fasta")
+complete.files
 
+SEQ.INFO <- list() # to keep info on duplicated
 
+for(x in complete.files){
+
+  FN    <- x 
+  FNnew <- x %>% str_replace("complete", "completewNewNames")  
+  FN.SP <- x %>% str_replace("complete", "unique")
+  FN.TX <- FN.SP %>% str_replace(".fasta", "_wTAXO.fasta")  
+
+  # ADD SP
+  add_species(fn = FN, fn.new = FNnew, REF = REF)
+
+  # Get unique
+  SEQ.INFO[[FN.SP]] <- get_uniqueSeq(fn = FNnew, fn.new = FN.SP)
+  
+  # ADD taxo
+  add_taxo(fn = FN.SP, fn.new = FN.TX)
+
+}
 
 
 
 # Verifier les doublons inter-sp et les ajouter à la main
 # Eventuellement ca pourrait être codé aussi
 
-
-
 keep_dissimilar(capply(SEQ.INFO[[1]]$refdup, FUN=keep_sp))$Duplicate
 SEQ.INFO[[1]]$refdup
-SEQ.INFO[[1]]$addSeq <- c("MF621737.1 Salvelinus fontinalis",
-                          "MF621744.1 Salvelinus namaycush") 
+
+SEQ.INFO[[1]]$addSeq <- c("KM267716.1 Ichthyomyzon fossor",
+                          "KP013103.1 Acipenser oxyrinchus",
+                          "AF038493.1 Chrosomus neogaeus",
+                          
+                          "AP012101.1 Pimephales notatus",
+                          "NC_037014.1 Notropis hudsonius",
+                          "AY216538.1 Hybognathus regius",
+                          
+                          "KP281293.1 Hypomesus olidus",
+                          "JQ390060.1 Coregonus clupeaformis",
+                          "MF621767.1 Prosopium cylindraceum",
+                          
+                          "MF621737.1 Salvelinus fontinalis",
+                          "MF621744.1 Salvelinus namaycush",
+                          "KP013107.1 Oncorhynchus clarkii",
+                          
+                          "AP009132.1 Alosa pseudoharengus",
+                          "HQ331537.1 Alosa sapidissima",
+                          "KX686083.1 Brevoortia tyrannus",
+                          
+                          "KX929880.1 Anarhichas denticulatus",
+                          "MH377821.1 Myoxocephalus scorpius",
+                          "KT004432.1 Icelus spatula",
+                          
+                          "DQ356939.1 Gadus morhua",
+                          "DQ356940.1 Gadus ogac",
+                          "AM489717.1 Melanogrammus aeglefinus",
+                          
+                          "KX929917.1 Sebastes mentella",
+                          "KX929918.1 Sebastes norvegicus",
+                          "KT723026.1 Ammodytes dubius",
+                          
+                          "EF100182.1 Rajella fyllae",
+                          "KF597303.1 Cetorhinus maximus"
+                          ) 
+
 
 keep_dissimilar(capply(SEQ.INFO[[2]]$refdup, FUN=keep_sp))$Duplicate
 SEQ.INFO[[2]]$refdup
-SEQ.INFO[[2]]$addSeq <- c("MF621737.1 Salvelinus fontinalis",
-                          "MF621744.1 Salvelinus namaycush",
-                          "KP013103.1 Acipenser oxyrinchus",
-                          "AP009132.1 Alosa pseudoharengus",
-                          "HQ331537.1 Alosa sapidissima",
-                          "JQ390060.1 Coregonus clupeaformis",
-                          "KM267716.1 Ichthyomyzon fossor",
-                          "NC_037014.1 Notropis hudsonius",
-                          "KY798500.1 Oncorhynchus mykiss",
-                          "AP012101.1 Pimephales notatus",
-                          "MF621767.1 Prosopium cylindraceum",
-                          "AY216538.1 Hybognathus regius"
+SEQ.INFO[[2]]$addSeq <- c("DQ678452.1 Sebastes norvegicus"
                           ) 
 
 keep_dissimilar(capply(SEQ.INFO[[3]]$refdup, FUN=keep_sp))$Duplicate
 SEQ.INFO[[3]]$refdup
-SEQ.INFO[[3]]$addSeq <- c("MF621737.1 Salvelinus fontinalis",
-                          "MF621744.1 Salvelinus namaycush",
-                          "KP013103.1 Acipenser oxyrinchus",
-                          "AP009132.1 Alosa pseudoharengus",
+SEQ.INFO[[3]]$addSeq <- c("AF038493.1 Chrosomus neogaeus",
                           "HQ331537.1 Alosa sapidissima",
-                          "KT723026.1 Ammodytes dubius",
-                          "JQ390060.1 Coregonus clupeaformis",
-                          "KM267716.1 Ichthyomyzon fossor",
-                          "NC_037014.1 Notropis hudsonius",
-                          "KY798500.1 Oncorhynchus mykiss",
-                          "AP012101.1 Pimephales notatus",
+                          "MF621737.1 Salvelinus fontinalis",
+                          
+                          "KM267717.1 Ichthyomyzon unicuspis",
+                          "KP013107.1 Oncorhynchus clarkii",
+                          "KU985081.1 Acipenser fulvescens",
+                          
+                          "MF621744.1 Salvelinus namaycush",
+                          "MF621766.1 Coregonus artedi",
                           "MF621767.1 Prosopium cylindraceum",
-                          "AY216538.1 Hybognathus regius",
-                          "DQ356940.1 Gadus ogac"
-                          )
+
+                          "MG570409.1 Notropis bifrenatus",
+                          "MG570414.1 Notropis heterolepis",
+                          "MG570463.1 Alosa aestivalis",
+                          
+                          "NC_037014.1 Notropis hudsonius"
+                          ) 
+
 
 keep_dissimilar(capply(SEQ.INFO[[4]]$refdup, FUN=keep_sp))$Duplicate
 SEQ.INFO[[4]]$refdup
 SEQ.INFO[[4]]$addSeq <- NA # Ne pas le faire rouler
 
-keep_dissimilar(capply(SEQ.INFO[[5]]$refdup, FUN=keep_sp))$Duplicate
-SEQ.INFO[[5]]$refdup
-SEQ.INFO[[5]]$addSeq <- c("AB188190.1 Cottus cognatus",
-                          "AY372798.1 Percina copelandi",
-                          "KM267716.1 Ichthyomyzon fossor") 
-
-keep_dissimilar(capply(SEQ.INFO[[6]]$refdup, FUN=keep_sp))$Duplicate
-SEQ.INFO[[6]]$refdup
-SEQ.INFO[[6]]$addSeq <- c("AB188190.1 Cottus cognatus",
-                          "AY372798.1 Percina copelandi",
-                          "KM267716.1 Ichthyomyzon fossor",
-                          "DQ536423.1 Lepisosteus osseus") 
-
-keep_dissimilar(capply(SEQ.INFO[[7]]$refdup, FUN=keep_sp))$Duplicate
-SEQ.INFO[[7]]$refdup
-SEQ.INFO[[7]]$addSeq <- NA # Ne pas le faire rouler
-
-keep_dissimilar(capply(SEQ.INFO[[8]]$refdup, FUN=keep_sp))$Duplicate
-SEQ.INFO[[8]]$refdup
-SEQ.INFO[[8]]$addSeq <- NA # Ne pas le faire rouler
-
-keep_dissimilar(capply(SEQ.INFO[[9]]$refdup, FUN=keep_sp))$Duplicate
-SEQ.INFO[[9]]$refdup
-SEQ.INFO[[9]]$addSeq <- NA # Ne pas le faire rouler
-
 # Ajouter les especes larguees (cree un fichier même s'il y en a aucunes)
 
-refSeq.raw.files      <- paste0(names(SEQ.INFO),".fasta")
-refSeq.taxo.files     <- paste0(names(SEQ.INFO),"_taxo.fasta")
-refSeq.sp.files       <- paste0(names(SEQ.INFO),"_SP.fasta")
-refSeq.taxo.new.files <- paste0(names(SEQ.INFO),"_taxo_dup.fasta") 
-refSeq.sp.new.files   <- paste0(names(SEQ.INFO),"_SP_dup.fasta") 
 
-for (x in 1:length(SEQ.INFO)){ # pas le 4 car aucun prob
-  refSeq.raw   <- readDNAStringSet(file.path(path.group, refSeq.raw.files[x]))
-  refSeq.taxo <- readDNAStringSet(file.path(path.group, refSeq.taxo.files[x])) 
-  refSeq.sp   <- readDNAStringSet(file.path(path.group, refSeq.sp.files[x]))   
+
+for (x in names(SEQ.INFO)){ # pas le 4 car aucun prob
+  
+  # files
+  
+  refSeq.raw.files      <- x %>% str_replace("unique", "completewNewNames") 
+  refSeq.taxo.files     <- x %>% str_replace("unique", "unique_wTaxo") 
+  refSeq.sp.files       <- x
+  refSeq.taxo.new.files <- refSeq.taxo.files %>% str_replace("unique_wTaxo", "unique_wTaxo_dup")  
+  refSeq.sp.new.files   <- refSeq.sp.files %>% str_replace("unique", "unique_dup")  
+  
+  # DNA
+  
+  refSeq.raw  <- readDNAStringSet(refSeq.raw.files )
+  refSeq.taxo <- readDNAStringSet(refSeq.taxo.files) 
+  refSeq.sp   <- readDNAStringSet(refSeq.sp.files  )   
   
   if(is.na(SEQ.INFO[[x]]$addSeq[1])){
     cat(paste0("\nNo sequences added for ", names(SEQ.INFO[x]), "\n"))
@@ -524,214 +556,159 @@ for (x in 1:length(SEQ.INFO)){ # pas le 4 car aucun prob
     
   }
 
-  writeXStringSet(refSeq.taxo.new, file.path(path.group, refSeq.taxo.new.files[x]), append=FALSE, format = "fasta")
-  writeXStringSet(refSeq.sp.new, file.path(path.group, refSeq.sp.new.files[x]), append=FALSE, format = "fasta")
+  writeXStringSet(refSeq.taxo.new, refSeq.taxo.new.files, append=FALSE, format = "fasta")
+  writeXStringSet(refSeq.sp.new,   refSeq.sp.new.files, append=FALSE, format = "fasta")
 
   # Enlever le fichier temporaire
 
 }
  
+
 file.remove("SEQ.fasta.temp")  
 
 
-# Verifier si j'ai tout ce que je veux
+# Stats -------------------------------------------------------------------
 
-for(x in 1:length(SEQ.INFO)){
-    print(names(SEQ.INFO)[x])
-  CAT <- str_sub(names(SEQ.INFO)[x], 1,2)
-  
-  if(CAT != "Al"){
-      if(file.exists(file.path(path.group, refSeq.sp.new.files[x]))){
-        fn <- file.path(path.group, refSeq.sp.new.files[x])        
-      } else {
-        fn <- file.path(path.group, refSeq.sp.files[x])
-      }
+# Compiler les infos qui pourront etre utiles
 
-      SEQ <- sort(unique(keep_sp(names(readDNAStringSet(fn)))))
-      EXP <- SP.QC[!is.na(SP.QC[,CAT]), "Espece"] %>% pull() %>%  sort()
-      
+final.files <- list.files(get.value("ref.path"), pattern = "unique", full.names=T) 
+final.files
 
-      print(setdiff(EXP, SEQ))
-  } else {
-    print("None!")
+# liste des especes manquantes des ref
+
+cat("\n-------------------------\n", 
+    "List of missing species\n",
+    date(),
+    "\n-------------------------\n", 
+    file=file.path(get.value("result.ref"), "MissingSP.txt"), 
+    append = FALSE, sep = "\n")
+
+for(y in c("PC", "QC")){
+
+  for(x in final.files %>% str_subset("QC") %>% str_subset("unique_dup")){
+    print(x)
+    
+    SEQ <- sort(unique(keep_sp(names(readDNAStringSet(x)))))
+    EXP <- SP.QC[!is.na(SP.QC[,y]), "Espece"] %>% pull() %>%  sort()
+    
+    
+    cat("\n", 
+        paste(y, x, sep = ": "),
+        setdiff(EXP, SEQ), 
+        file=file.path(get.value("result.ref"), "MissingSP.txt"), 
+        append = TRUE, sep = "\n")
+    
   }
-
 }
 
 
-
-# Check a la main du comment du pourquoi
-
-
-DNA <- readDNAStringSet(files.seq.wPATH[str_detect(files.seq.wPATH, "Micropterus dolomieui")])
-
-vmatchPattern(pattern = AMORCE[1], subject = DNA,  max.mismatch = 3)
-vmatchPattern(pattern = as.character(reverseComplement(DNAStringSet(AMORCE[2]))), subject = DNA,  max.mismatch = 3)
-
-AMORCE <- Labo.amorces %>% filter(NomCommun == "ecoPrimer") %>% select(Sequence) %>% pull()
-
-
-length(SEQ)
-length(EXP)
-
-
-names(SEQ.INFO)
-str(SEQ.INFO[["PC_12S-eco"]]$refseq)
-
-# Faire un arbre pour voir rapidement ça ressemble a quoi 
-
-pdf(file.path(path.group, "Tree_2018-11-16.pdf"), width=8, height=11,paper='letter') 
-
-
-DNA1 <-readDNAStringSet(file.path(path.group, "All_12S-eco_SP_dup.fasta"))
-DNA2 <-readDNAStringSet(file.path(path.group, "All_12S-eco_taxo_dup.fasta"))
-
-NAMES <- names(DNA1)[str_detect(names(DNA2), pattern = "Cypriniformes")]
-
-rapid_tree(DNA1[NAMES], TITLE = "12S ecoPrimer - Ordre: Cypriniformes")
-
-
-NAMES <- names(DNA1)[str_detect(names(DNA2), pattern = "Cyprinidae")]
-
-rapid_tree(DNA1[NAMES], TITLE = "12S ecoPrimer - Famille: Cyprinidae")
-
-NAMES <- names(DNA1)[str_detect(names(DNA2), pattern = "Salmonidae")]
-
-rapid_tree(DNA1[NAMES], TITLE = "12S ecoPrimer - Famille: Salmonidae")
-
-DNA1 <-readDNAStringSet(file.path(path.group, "All_12S-MiF_SP_dup.fasta"))
-DNA2 <-readDNAStringSet(file.path(path.group, "All_12S-MiF_taxo_dup.fasta"))
-
-NAMES <- names(DNA1)[str_detect(names(DNA2), pattern = "Cypriniformes")]
-
-rapid_tree(DNA1[NAMES], TITLE = "12S MiFish - Ordre: Cypriniformes")
-
-
-NAMES <- names(DNA1)[str_detect(names(DNA2), pattern = "Cyprinidae")]
-
-rapid_tree(DNA1[NAMES], TITLE = "12S MiFish - Famille: Cyprinidae")
-
-NAMES <- names(DNA1)[str_detect(names(DNA2), pattern = "Salmonidae")]
-
-rapid_tree(DNA1[NAMES], TITLE = "12S MiFish - Famille: Salmonidae")
-
-DNA1 <-readDNAStringSet(file.path(path.group, "All_CYTB-Kot_SP_dup.fasta"))
-DNA2 <-readDNAStringSet(file.path(path.group, "All_CYTB-Kot_taxo_dup.fasta"))
-
-## Ne pas faire car trop de séeuqneces trop longue
-#NAMES <- names(DNA1)[str_detect(names(DNA2), pattern = "Cypriniformes")]
-
-#rapid_tree(DNA1[NAMES], TITLE = "CytB Kotcher - Ordre: Cypriniformes")
-
-
-#NAMES <- names(DNA1)[str_detect(names(DNA2), pattern = "Cyprinidae")]
-
-#rapid_tree(DNA1[NAMES], TITLE = "CytB Kotcher  - Famille: Cyprinidae")
-
-NAMES <- names(DNA1)[str_detect(names(DNA2), pattern = "Salmonidae")]
-
-rapid_tree(DNA1[NAMES], TITLE = "CytB Kotcher  - Famille: Salmonidae")
-
-dev.off()
-
-
-
-list.files(path.group)
-
-# Compter
-
-length(PC.12Seco$refseq)
-length(PC.12SMiF$refseq)
-
-length(All.12Seco$refseq)
-length(All.12MiF$refseq)
-
-length(unique(names(All.12Seco$refseq)))
-length(unique(names(All.12MiF$refseq)))
-
-# Noms manquant dans MiF
-setdiff(names(All.12Seco$refseq), names(All.12SMiF$refseq))
-
-# Noms manquants dans eco
-setdiff(names(All.12SMiF$refseq), names(All.12Seco$refseq))
-
-
-# Old ---------------------------------------------------------------------
-# Remettre le code en place car interessant de savoir
-
-
-sort(unique(REF$Order))
-
-SP.long <- c(REF %>% filter(Espece_initial %in% c(SP %>% pull())) %>% select (Espece_initial) %>% pull(),
-             REF %>% filter(Espece_initial %in% c(SP %>% pull())) %>% select (Espece) %>% pull(),
-             REF %>% filter(Espece %in% c(SP %>% pull())) %>% select (Espece_initial) %>% pull()
-             ) %>% unique()
-
-SP.long 
-
-SP.cypri <- SP.long[which(SP.long %in% c(REF %>% filter(Order %in% c("Cypriniformes", "Cyprinodontiformes")) %>% 
-                                                 select (Espece_initial) %>% 
-                                                 pull()))]
-
-
-seq.files <- vector()
-seq.res   <- data.frame(SP = SP, N.ADNmt = NA, N.12S = NA,  N.CYTB = NA, N.COI = NA)
-
-for(x in SP){
-  seq.x <- list.files(file.path(biodiv.path,"/Sequences/Sequences_EXTERNE"), pattern = x)  
- 
-  seq.files <- c(seq.files, seq.x)
-  
-  seq.res[which(seq.res$SP == x), "N.ADNmt"] <- length(seq.x[str_detect(seq.x, pattern = "ADNmt")])
-  seq.res[which(seq.res$SP == x), "N.12S"]   <- length(seq.x[str_detect(seq.x, pattern = "12S")])  
-  seq.res[which(seq.res$SP == x), "N.CYTB"]   <- length(seq.x[str_detect(seq.x, pattern = "CYTB")])    
-  seq.res[which(seq.res$SP == x), "N.COI"]   <- length(seq.x[str_detect(seq.x, pattern = "COI")])
-  }
-
-seq.files
-
-seq.res 
-
-seq.res %>% filter(SP %in% SP.cypri)
-
-
-# Summary -----------------------------------------------------------------
-
-# Combien de sequences par famille
-
-SP.QC.wInfo <- SP.QC %>% dplyr::left_join(REF %>% select(Espece_initial, Class, Order, Family), 
-                    by =c("Espece" = "Espece_initial")) #%>% 
-                    
-SP.QC.wInfo %>% dplyr::group_by(Class, Order, Family) %>% 
-                dplyr::summarise(N = length(Espece)) %>% View()
-
-
-unique(sort(SP.QC.wInfo$Order))
-
-
-REF %>% filter(Order %in% unique(SP.QC.wInfo$Order)) %>% dplyr::group_by(Order) %>% 
-  dplyr::summarise(N = length(Espece)) %>% View()
-
-
-View(SP.QC)
-
-# Faire un fichier fasta
-
-seq.files.cypri <- vector()
-
-
-for(x in SP.cypri){
-  seq.x <- list.files(file.path(biodiv.path,"/Sequences/Sequences_EXTERNE"), pattern = x)  
-  
-  seq.files.cypri <- c(seq.files.cypri, seq.x)
-
+# N de séquences par fichier
+
+cat("\n-----------------------------\n", 
+    "List and size of reference DB\n",
+    date(),
+    "\n-----------------------------\n", 
+    file=file.path(get.value("result.ref"), "REFinfo.txt"), 
+    append = FALSE, sep = "\n")
+
+for(x in final.files){
+    print(x)
+    
+    Nseq <- length(readDNAStringSet(x))
+    Nsp <- length(unique(keep_sp(names(readDNAStringSet(x)))))
+    
+    cat("\n", 
+        paste(x, sep = ": "),
+        paste(Nseq, "sequences", sep= " "), 
+        paste(Nsp, "species", sep= " "), 
+        file=file.path(get.value("result.ref"), "REFinfo.txt"), 
+        append = TRUE, sep = "\n")
+    
 }
 
-seq.files.cypri.12S <- c(seq.files.cypri[str_detect(seq.files.cypri, pattern = "12S")],
-                         seq.files.cypri[str_detect(seq.files.cypri, pattern = "ADNmt")])
 
-DNA.cypri <- readDNAStringSet(file.path(file.path(biodiv.path,"/Sequences/Sequences_EXTERNE",seq.files.cypri.12S)))
+# Liste des espèces qu'on ne peut pas distinguer
 
-names(DNA.cypri) <- seq.files.cypri.12S
 
-writeXStringSet(DNA.cypri, file.path("./00_Data/03_RefSeq","DNA.cypri.12S.fasta"))
+cat("\n-----------------------------\n", 
+    "List of undistinguable species\n",
+    date(),
+    "\n-----------------------------\n", 
+    file=file.path(get.value("result.ref"), "DUPinfo.txt"), 
+    append = FALSE, sep = "\n")
+
+for(x in 1:length(names(SEQ.INFO))){
+  
+  DATA <- keep_dissimilar(capply(SEQ.INFO[[x]]$refdup, FUN=keep_sp))
+  
+  cat("\n", 
+      paste(names(SEQ.INFO[x]), sep = ": "),
+      paste(nrow(DATA),"undistinguable species", sep = " "),
+      "",
+      file=file.path(get.value("result.ref"), "DUPinfo.txt"), 
+      append = TRUE, sep = "\n")
+
+  
+  write.table(DATA, 
+             file.path(get.value("result.ref"), "DUPinfo.txt"),
+             append=T,  row.names = FALSE, col.names = FALSE)
+}
+
+
+# Stats sur les especes par groupe
+
+
+A <- final.files %>% str_subset("QC") %>% str_subset("wTaxo_dup")
+
+SEQ <- names(readDNAStringSet(A[2]))
+SEQ
+
+CLASS <- c("Kindom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+
+DATA <- str_split(SEQ, ";") %>% unlist() %>% matrix(nrow = length(SEQ), ncol=length(CLASS), byrow = T) %>% data.frame()
+names(DATA) <- CLASS
+
+DATA
+
+GRAPH1 <- DATA %>% group_by(Class, Order, Family) %>% 
+                   summarise(N = length(Species)) %>% 
+                   ggplot(aes(x="", y = N, fill = Class)) +
+                     geom_bar(width = 1, stat = "identity") +
+                     coord_polar("y", start=0) +
+                     labs(title= "N sequences by class")+
+                     theme_minimal()
+
+GRAPH2 <- DATA %>% filter(Class == "Teleostei") %>% 
+                   group_by(Class, Order, Family) %>% 
+                   summarise(N = length(Species)) %>% 
+                   ggplot(aes(x="", y = N, fill = Order)) +
+                   geom_bar(width = 1, stat = "identity") +
+                   coord_polar("y", start=0) +
+                   labs(title= "N sequences by order, within Teleostei (class)")+  
+                   theme_minimal()
+
+GRAPH3 <- DATA %>% filter(Family == "Cyprinidae") %>% 
+                   group_by(Class, Order, Family, Species) %>% 
+                   summarise(N = length(Species)) %>% 
+                   ggplot(aes(x="", y = N, fill = Species)) +
+                   geom_bar(width = 1, stat = "identity") +
+                   coord_polar("y", start=0) +
+                   labs(title= "N sequences by species, within Cyprinidae (Family)")+  
+                   theme_minimal()
+
+GRAPH4 <- DATA %>% filter(Family == "Salmonidae") %>% 
+                   group_by(Class, Order, Family, Species) %>% 
+                   summarise(N = length(Species)) %>% 
+                   ggplot(aes(x="", y = N, fill = Species)) +
+                   geom_bar(width = 1, stat = "identity") +
+                   coord_polar("y", start=0) +
+                   labs(title= "N sequences by species, within Salmonidae (Family)")+  
+                   theme_minimal()
+
+ggarrange(GRAPH1,
+          GRAPH2,
+          GRAPH3,
+          GRAPH4,
+          labels = LETTERS[1:4],
+          ncol = 2, nrow = 2)                 
+
