@@ -356,6 +356,7 @@ OTUtab.12s.cor     <- correct.reads(OTUtab.12s)
 OTUtab.cytB.R1.cor <- correct.reads(OTUtab.cytB.R1)  
 OTUtab.cytB.R2.cor <- correct.reads(OTUtab.cytB.R2) 
 
+# Representation graphique
 
 pdf(file.path(get.value("result.OTUtables"),"SEQheatmap.corrected.pdf"), width = 11, height = 8.5)
 
@@ -383,7 +384,8 @@ pdf(file.path(get.value("result.OTUtables"),"PCRheatmap.corrected.pdf"), width =
 
 dev.off()
 
-
+# Enregistrer les SEQTAB corrigées
+#save()
 
 # The code for mock community should be on another space? Maybe only after assigning species
 
