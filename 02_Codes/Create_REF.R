@@ -29,18 +29,6 @@ for(i in 1:length( list.files("./03_Functions") )){
   source(file.path("./03_Functions",  list.files("./03_Functions")[i]))  
 }
 
-
-# Path --------------------------------------------------------------------
-
-data.path <-"./00_Data/00_FileInfos"
-path.group   <- "./00_Data/03_RefSeq"
-
-biodiv.path  <- "S:/Genpop/01-Projets de recherche/Banque reference biodiversite ESTL GSTL 2017-"
-path.EXTERNE <- "Sequences/Sequences_EXTERNE"
-path.LABO    <- "Sequences/Sequences_LABO_finales"
-
-Sample.xl <- "DB_Echantillons.xlsx"
-
 # Functions ---------------------------------------------------------------
 
 # Ajouter la taxonomie a un fichier fasta
@@ -658,25 +646,51 @@ for(x in 1:length(names(SEQ.INFO))){
 # Stats sur les especes par groupe
 
 
-A <- final.files %>% str_subset("QC") %>% str_subset("wTaxo_dup")
+library(grid) 
+library(gridExtra)
+library(ggplotify)
 
-SEQ <- names(readDNAStringSet(A[2]))
-SEQ
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  legend
+}
+
+
+#pdf(file.path(get.value("result.ref"), "testtttt.pdf"), 
+#    width = 11, height = 8.5) 
+
+
+for(x in final.files %>% str_subset("wTaxo_dup")){
+
+  print(x)
+  
+SEQ <- names(readDNAStringSet(x))
+#SEQ
 
 CLASS <- c("Kindom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
 
 DATA <- str_split(SEQ, ";") %>% unlist() %>% matrix(nrow = length(SEQ), ncol=length(CLASS), byrow = T) %>% data.frame()
 names(DATA) <- CLASS
 
-DATA
+theme.legend <- theme(legend.position = "right", 
+      legend.text = element_text(size=8),
+      legend.justification = "left",
+      legend.key.size = unit(10, "points"),
+      plot.margin = unit(c(1,1,1,1), "lines"))
+
 
 GRAPH1 <- DATA %>% group_by(Class, Order, Family) %>% 
                    summarise(N = length(Species)) %>% 
                    ggplot(aes(x="", y = N, fill = Class)) +
                      geom_bar(width = 1, stat = "identity") +
                      coord_polar("y", start=0) +
+  guides(fill = guide_legend(ncol = 1, title = NULL)) +
                      labs(title= "N sequences by class")+
-                     theme_minimal()
+  ylab(NULL) + xlab(NULL)+  
+  theme_minimal() +
+  theme.legend
 
 GRAPH2 <- DATA %>% filter(Class == "Teleostei") %>% 
                    group_by(Class, Order, Family) %>% 
@@ -684,31 +698,64 @@ GRAPH2 <- DATA %>% filter(Class == "Teleostei") %>%
                    ggplot(aes(x="", y = N, fill = Order)) +
                    geom_bar(width = 1, stat = "identity") +
                    coord_polar("y", start=0) +
-                   labs(title= "N sequences by order, within Teleostei (class)")+  
-                   theme_minimal()
+  guides(fill = guide_legend(ncol = 1, title = NULL)) +
+                   labs(title= "N sequences by order, within Teleostei (class)") +
+ ylab(NULL) + xlab(NULL)+  
+  theme_minimal() +
+  theme.legend
+
+
+
 
 GRAPH3 <- DATA %>% filter(Family == "Cyprinidae") %>% 
-                   group_by(Class, Order, Family, Species) %>% 
+                   group_by(Class, Order, Family, Genus, Species) %>% 
                    summarise(N = length(Species)) %>% 
-                   ggplot(aes(x="", y = N, fill = Species)) +
+                   ggplot(aes(x="", y = N, fill = Genus)) +
                    geom_bar(width = 1, stat = "identity") +
                    coord_polar("y", start=0) +
-                   labs(title= "N sequences by species, within Cyprinidae (Family)")+  
-                   theme_minimal()
+                   guides(fill = guide_legend(ncol = 1, title = NULL)) +
+                   labs(title= "N sequences by genus, within Cyprinidae (Family)")+
+  ylab(NULL) + xlab(NULL)+  
+                   theme_minimal() +
+  theme.legend 
 
 GRAPH4 <- DATA %>% filter(Family == "Salmonidae") %>% 
-                   group_by(Class, Order, Family, Species) %>% 
+                   group_by(Class, Order, Family, Genus, Species) %>% 
                    summarise(N = length(Species)) %>% 
                    ggplot(aes(x="", y = N, fill = Species)) +
                    geom_bar(width = 1, stat = "identity") +
                    coord_polar("y", start=0) +
-                   labs(title= "N sequences by species, within Salmonidae (Family)")+  
-                   theme_minimal()
+                  guides(fill = guide_legend(ncol = 1, title = NULL)) +  
+                   labs(title= "N sequences by species, within Salmonidae (Family)")+ 
+  ylab(NULL) + xlab(NULL)+  
+  theme_minimal() +
+  theme.legend
 
-ggarrange(GRAPH1,
-          GRAPH2,
-          GRAPH3,
-          GRAPH4,
+GRAPH <- ggarrange(as.ggplot(arrangeGrob(GRAPH1+ theme(legend.position = 'none'), g_legend(GRAPH1), 
+                                ncol=2, nrow=1, widths=c(3/4,1/4))),
+          as.ggplot(arrangeGrob(GRAPH2+ theme(legend.position = 'none'), g_legend(GRAPH2), 
+                                ncol=2, nrow=1, widths=c(3/4,1/4))),
+          as.ggplot(arrangeGrob(GRAPH3+ theme(legend.position = 'none'), g_legend(GRAPH3), 
+                                ncol=2, nrow=1, widths=c(3/4,1/4))),
+          as.ggplot(arrangeGrob(GRAPH4+ theme(legend.position = 'none'), g_legend(GRAPH4), 
+                                ncol=2, nrow=1, widths=c(3/4,1/4))),
           labels = LETTERS[1:4],
-          ncol = 2, nrow = 2)                 
+          legend = "right",
+          ncol = 2, nrow = 2
+)
+
+
+ggsave(filename = x %>% str_replace(get.value("ref.path"), get.value("result.ref")) %>%  str_replace("fasta", "pdf"), 
+    width = 11, height = 8.5, units = "in",
+    plot =  
+
+annotate_figure(GRAPH,
+                top = text_grob(x, color = "black", face = "bold", size = 14))
+)
+#dev.off()
+
+}
+
+
+
 
