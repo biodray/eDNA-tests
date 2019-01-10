@@ -190,6 +190,8 @@ ASVtab.12s     <- SEQtable.df(ASVtab.12s)
 ASVtab.cytB.R1 <- SEQtable.df(ASVtab.cytB.F)
 ASVtab.cytB.R2 <- SEQtable.df(ASVtab.cytB.R)
 
+# Enlever les ASV tables qui ont changés de noms
+rm(list = c("ASVtab.cytB.F", "ASVtab.cytB.R"))
 
 # Simplifyin column names
 names(ASVtab.12s)     <- names(ASVtab.12s) %>% simplify.col() %>% str_remove("_R1")
@@ -385,7 +387,10 @@ pdf(file.path(get.value("result.OTUtables"),"PCRheatmap.corrected.pdf"), width =
 dev.off()
 
 # Enregistrer les SEQTAB corrigées
-#save()
+save(file = get.value("CORRECTEDtable.data"), 
+     list = ls(pattern = "tab.")[-13]) # Pour enlever "SEQtable.df" 
+
+
 
 # The code for mock community should be on another space? Maybe only after assigning species
 

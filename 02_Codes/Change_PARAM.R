@@ -109,6 +109,7 @@ add.param(PARAM) <- c("ASVtable.data", paste(get.value("result.data.path"),"ASVt
 
 add.param(PARAM) <- c("OTUtable.data", paste(get.value("result.data.path"),"OTUtable.data", sep = "/"))
 
+add.param(PARAM) <- c("CORRECTEDtable.data", paste(get.value("result.data.path"),"CORRECTEDtable.data", sep = "/"))
 
 # Save Parameters ---------------------------------------------------------
 
