@@ -4,9 +4,8 @@
 # Assign species to different eDNA dataset
 # 
 # Audrey Bourret
-# 2018-11-09
+# 2018-11-09 - Update January 11 2019
 #
-
 
 # Library -----------------------------------------------------------------
 
@@ -15,33 +14,38 @@ library(DECIPHER); packageVersion("DECIPHER")
 library(tidyverse)
 
 # Internal functions
-source(file.path("./03_Functions",  list.files("./03_Functions")))
+for(i in 1:length( list.files("./03_Functions") )){
+  source(file.path("./03_Functions",  list.files("./03_Functions")[i]))  
+}
+
 
 # Data --------------------------------------------------------------------
 
 # Path
 
-result.path <- get.value("result.path")
-ref.path    <- "./00_Data/03_RefSeq"
+#result.path <- get.value("result.path")
+#ref.path    <- "./00_Data/03_RefSeq"
 #log.path    <- "./03_Log" 
 
 # Seqtab
 
-list.files(get.value("result.path"))
+list.files(get.value("result.data.path"))
 
-load(file.path(get.value("result.path"), "Seqtab.data"))
+#load(get.value("ASVtable.data"))
+#load(get.value("OTUtable.data"))
+load(get.value("CORRECTEDtable.data"))
 
 # Ref
 
-list.files(get.value("ref.path"))
+SEQ.REF <- list.files(get.value("ref.path"), full.names = T)
 
-REF.12S.SP   <- "All_12S-eco_SP_dup.fasta"  
-REF.12S.taxo <- "All_12S-eco_taxo_dup.fasta"
-
-REF.CYTB.SP   <- "All_CYTB-Kot_SP_dup.fasta"  
-REF.CYTB.taxo <- "All_CYTB-Kot_taxo_dup.fasta"
-
-REF.ALL.taxo <- "All_ALL_taxo.fasta"
+# REF.12S.SP   <- "All_12S-eco_SP_dup.fasta"  
+# REF.12S.taxo <- "All_12S-eco_taxo_dup.fasta"
+# 
+# REF.CYTB.SP   <- "All_CYTB-Kot_SP_dup.fasta"  
+# REF.CYTB.taxo <- "All_CYTB-Kot_taxo_dup.fasta"
+# 
+# REF.ALL.taxo <- "All_ALL_taxo.fasta"
 
 make.root <- function(FILE){
                       REF <- readDNAStringSet(FILE)
