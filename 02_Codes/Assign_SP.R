@@ -37,7 +37,8 @@ load(get.value("CORRECTEDtable.data"))
 
 # Ref
 
-SEQ.REF <- list.files(get.value("ref.path"), full.names = T)
+SEQ.REF <- list.files(get.value("ref.path"), pattern = ".fasta",full.names = T) %>% str_subset("unique")
+SEQ.REF
 
 # REF.12S.SP   <- "All_12S-eco_SP_dup.fasta"  
 # REF.12S.taxo <- "All_12S-eco_taxo_dup.fasta"
@@ -54,8 +55,19 @@ make.root <- function(FILE){
 }
 
 
-REF.12S.wROOT  <- make.root(file.path(get.value("ref.path"), REF.12S.taxo))
-REF.CYTB.wROOT <- make.root(file.path(get.value("ref.path"), REF.CYTB.taxo))
+# Function to transform df to dada2 table (contrary of SEQtable.df) 
+SEQtable.tr <- function(tab){
+  
+  tab <- tab %>% select(-ID)
+  new.tab <- data.frame(t(tab))
+  
+  return(new.tab)
+}
+
+
+
+#REF.12S.wROOT  <- make.root(file.path(get.value("ref.path"), REF.12S.taxo))
+#REF.CYTB.wROOT <- make.root(file.path(get.value("ref.path"), REF.CYTB.taxo))
 
 #REF.ALL.wROOT  <- make.root(file.path(ref.path, REF.ALL.taxo))
 
