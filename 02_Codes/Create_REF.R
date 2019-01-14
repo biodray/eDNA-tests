@@ -758,4 +758,50 @@ annotate_figure(GRAPH,
 
 
 
+# Cut CYTB in R1 and R2 ---------------------------------------------------
+
+library(DECIPHER)
+
+
+for(x in final.files %>% str_subset("CYTB-")){
+  
+  print(x)
+  
+  DNA <- readDNAStringSet(x)
+  DNA <- RemoveGaps(DNA)
+    
+# R1
+  
+  DNA.R1 <- subseq(DNA, 1, 75)
+  
+# R2
+  
+  DNA.R2 <- subseq(reverseComplement(DNA), 1, 75)
+  
+# save
+  
+  writeXStringSet(DNA.R1, x %>% str_replace("CYTB-", "CYTB.R1-"), append=FALSE, format = "fasta")
+  
+  writeXStringSet(DNA.R2, x %>% str_replace("CYTB-", "CYTB.R2-"), append=FALSE, format = "fasta")
+  
+}
+
+# Remove GAPS in ALL REF files --------------------------------------------
+
+final.files <- list.files(get.value("ref.path"), pattern = "unique", full.names=T) 
+final.files
+
+
+for(x in final.files){
+  
+  print(x)
+  
+  DNA <- readDNAStringSet(x)
+  DNA <- RemoveGaps(DNA)
+  
+  writeXStringSet(DNA, x, append=FALSE, format = "fasta")
+
+}
+
+
 
