@@ -34,11 +34,20 @@ list.files(get.value("result.data.path"))
 #load(get.value("ASVtable.data"))
 #load(get.value("OTUtable.data"))
 load(get.value("CORRECTEDtable.data"))
-
+  ls()
 # Ref
 
 SEQ.REF <- list.files(get.value("ref.path"), pattern = ".fasta",full.names = T) %>% str_subset("unique")
 SEQ.REF
+
+
+PARAM <-  expand.grid(LOCUS = c("12s", "cytB.R1", "cytB.R2"), 
+                      OTU = c("ASV", "OTU"),
+                      ASSIGN = c("RDP","IDT"),
+                      SP = c("QC", "All"))
+
+PARAM$TAB <- paste0(PARAM$OTU, "tab.", PARAM$LOCUS)
+PARAM
 
 # REF.12S.SP   <- "All_12S-eco_SP_dup.fasta"  
 # REF.12S.taxo <- "All_12S-eco_taxo_dup.fasta"
@@ -50,7 +59,7 @@ SEQ.REF
 
 make.root <- function(FILE){
                       REF <- readDNAStringSet(FILE)
-                      names(REF) <- stringr::str_replace(names(REF), "Animalia;Chordata", "Root")
+                      names(REF) <- stringr::str_replace(names(REF), "Animalia", "Root")
                       return(REF)
 }
 
@@ -59,7 +68,8 @@ make.root <- function(FILE){
 SEQtable.tr <- function(tab){
   
   tab <- tab %>% select(-ID)
-  new.tab <- data.frame(t(tab))
+  new.tab <- t(tab)
+  
   
   return(new.tab)
 }
@@ -77,6 +87,9 @@ SEQtable.tr <- function(tab){
 
 # Function to run assigntaxonomy then assignspecies  
 RDP <- function(seqtab, REF.TAXO, REF.SP){
+                
+                #seqtab2 <- SEQtable.tr(seqtab)
+                
                 taxo <- assignTaxonomy(seqtab, REF.TAXO, 
                         taxLevels = c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species_80"), 
                         minBoot=80, tryRC = TRUE)
@@ -92,76 +105,102 @@ RDP <- function(seqtab, REF.TAXO, REF.SP){
                 return(taxowSP)
 }
 
-taxo.RDP.12S.F <- RDP(seqtab.12s.F, file.path(get.value("ref.path"), REF.12S.taxo), file.path(get.value("ref.path"), REF.12S.SP))
-taxo.RDP.12S.R <- RDP(seqtab.12s.R, file.path(get.value("ref.path"), REF.12S.taxo), file.path(get.value("ref.path"), REF.12S.SP))
-taxo.RDP.12S   <- RDP(seqtab.12s, file.path(get.value("ref.path"), REF.12S.taxo), file.path(get.value("ref.path"), REF.12S.SP))
 
-taxo.RDP.12S.IBIS   <- RDP(seqtab.12s.IBIS, file.path(get.value("ref.path"), REF.12S.taxo), file.path(get.value("ref.path"), REF.12S.SP))
-
-taxo.RDP.cytB.F <- RDP(seqtab.cytB.F, file.path(get.value("ref.path"), REF.CYTB.taxo), file.path(get.value("ref.path"), REF.CYTB.SP))
-taxo.RDP.cytB.R <- RDP(seqtab.cytB.R, file.path(get.value("ref.path"), REF.CYTB.taxo), file.path(get.value("ref.path"), REF.CYTB.SP))
-#taxo.RDP.cytB   <- RDP(seqtab.cytB, file.path(ref.path, REF.CYTB.taxo), file.path(ref.path, REF.CYTB.SP))
+taxoTAB <- list()
 
 
-nrow(taxo.RDP.12S.F)
+for(x in 1:nrow(PARAM)){
+  
+  if(PARAM[x,"ASSIGN"] == "RDP"){
 
+      print(PARAM[x,"TAB"])
+    
+      REF.taxo <- SEQ.REF %>% str_subset("unique_wTaxo_dup.fasta") %>% str_subset(toupper(PARAM[x,"LOCUS"]) %>% str_remove(".R[:digit:]"))  %>% str_subset(as.character(PARAM[x,"SP"]))
+      REF.sp   <- SEQ.REF %>% str_subset("unique_dup.fasta") %>% str_subset(toupper(PARAM[x,"LOCUS"])%>% str_remove(".R[:digit:]")) %>% str_subset(as.character(PARAM[x,"SP"]))
 
-View(taxo.RDP.cytB.F)
+      SEQTAB <- SEQtable.tr(get(PARAM[x,"TAB"]))
+  
+      # the function get() is use to call an object by its name
+      taxoRPD <- RDP(SEQTAB, REF.taxo, REF.sp) 
 
+      
+      taxoTAB[[paste(PARAM[x,"TAB"], "RDP", as.character(PARAM[x,"SP"]), sep=".")]]<- taxoRPD
+    
+  }
+}
+
+names(taxoTAB)
 
 # IDTAXA ------------------------------------------------------------------
 
 
+TS.ls <-  list()
+
 # Create training set
 
-
-TS.12S <- LearnTaxa(REF.12S.wROOT, names(REF.12S.wROOT))
-TS.12S
-
-TS.12S$problemSequences
-TS.12S$problemGroups
-
-TS.CYTB <- LearnTaxa(REF.CYTB.wROOT, names(REF.CYTB.wROOT))
-
-TS.CYTB$problemGroups
-TS.CYTB$problemSequences
-
-
-TS.CYTB <- LearnTaxa(REF.CYTB.wROOT[-87], names(REF.CYTB.wROOT[-87]))
-TS.CYTB
-
-plot(TS.12S)
-plot(TS.CYTB)
-
-# Manually add ranks
-add.rank.TS <- function(TS){
-
-  ranks <- c("Root", "Class", "Order", "Family", "Genus", "Species") # ranks of interest
+for(x in 1:nrow(PARAM)){
   
-  add.rank <- vector()
-
-  for(x in 1:length(TS[["taxonomy"]])){
+  if(PARAM[x,"ASSIGN"] == "IDT" & PARAM[x,"OTU"] == "ASV"){ # same training set ASV and OTU
+ 
+   REF.taxo <- SEQ.REF %>% str_subset("unique_wTaxo_dup.fasta") %>% str_subset(toupper(PARAM[x,"LOCUS"]))  %>% str_subset(as.character(PARAM[x,"SP"]))
+   print(REF.taxo)  
+  
+   REF.wROOT <- make.root(REF.taxo)
     
-    N <- str_count( TS[["taxonomy"]][x], pattern = ";")
-  
-    add.rank <- c(add.rank, ranks[N])
+   TS <- LearnTaxa(REF.wROOT, names(REF.wROOT))
+   
+   TS.ls[[paste(as.character(PARAM[x,"SP"]), as.character(PARAM[x,"LOCUS"]), sep=".")]] <- TS
+   
+   print(TS$problemSequences)
+   print(TS$problemGroups)   
+   
+   #TS.ls[[paste(as.character(PARAM[x,"SP"]), as.character(PARAM[x,"LOCUS"]), "wRANK", sep=".")]] <-  add.rank.TS(TS)
 
   }
-
-  TS[["rank"]] <- add.rank
-
-  return(TS)
+  
 }
 
 
-TS.12SwR  <- add.rank.TS(TS.12S)
-TS.CYTBwR <- add.rank.TS(TS.CYTB)
+names(TS.ls)
+
+TS.ls
+
+plot(TS.ls[["All.12s"]])
+plot(TS.ls[["All.cytB.R1"]])
+plot(TS.ls[["All.cytB.R2"]])
+
+plot(TS.ls[["QC.12s"]])
+plot(TS.ls[["QC.cytB.R1"]])
+plot(TS.ls[["QC.cytB.R2"]])
+
+
+# # Manually add ranks
+# add.rank.TS <- function(TS){
+# 
+#   ranks <- c("Root", "Class", "Order", "Family", "Genus", "Species") # ranks of interest
+#   
+#   add.rank <- vector()
+# 
+#   for(x in 1:length(TS[["taxonomy"]])){
+#     
+#     N <- str_count( TS[["taxonomy"]][x], pattern = ";")
+#   
+#     add.rank <- c(add.rank, ranks[N])
+# 
+#   }
+# 
+#   TS[["rank"]] <- add.rank
+# 
+#   return(TS)
+# }
 
 # Idtaxa on all data set
 
-IDT <- function(SEQTAB, TS, R = FALSE){
+IDT <- function(SEQTAB, TS, ranks = c("Root", "Phylum", "Class", "Order", "Family", "Genus", "Species"),  R = FALSE){
   
-  ranks <- c("Root", "Class", "Order", "Family", "Genus", "Species") # ranks of interest
+# R for reverseComplement - I don't think its usefull anymore
+  
+  #ranks <- c("Root", "Phylum", "Class", "Order", "Family", "Genus", "Species") # ranks of interest
   
   if(R == FALSE){
     ids <- IdTaxa(DNAStringSet(getSequences(SEQTAB)), TS, strand="top", processors=1, verbose=TRUE) # use all processors
@@ -174,99 +213,219 @@ IDT <- function(SEQTAB, TS, R = FALSE){
     ids[[x]]$rank <- ranks[1:N]
   }
 
+
+  print(plot(ids, TS))
+  
+  return(ids)
+  
+}
+
+
+IDT.dada2 <- function(ids, ranks = c("Root", "Phylum", "Class", "Order", "Family", "Genus", "Species")){
   taxid <- t(sapply(ids, function(x) {
-                         m <- match(ranks, x$rank)
-                         taxa <- x$taxon[m]
-                         taxa[startsWith(taxa, "unclassified_")] <- NA
-                         taxa
-                         }))
-
+    m <- match(ranks, x$rank)
+    taxa <- x$taxon[m]
+    taxa[startsWith(taxa, "unclassified_")] <- NA
+    taxa
+  }))
+  
   colnames(taxid) <- ranks; rownames(taxid) <- getSequences(SEQTAB)
+  
+  return(taxid)
+  
+}
 
-  plot(ids, TS)
+
+# Do it now!
+
+taxoTAB.IDT <- list()
+
+for(x in 1:nrow(PARAM)){
   
-  return(list(IDT = ids, IDT.dada2 = taxid))
-  
+  if(PARAM[x,"ASSIGN"] == "IDT"){
+    
+    print(paste(PARAM[x,"TAB"], (PARAM[x,"SP"])))
+    
+    #Get data
+    SEQTAB <- SEQtable.tr(get(PARAM[x,"TAB"]))
+    
+    TS <- TS.ls[[paste(PARAM[x,"SP"], PARAM[x,"LOCUS"], sep=".")]]
+
+    # IDT
+    taxoIDT       <- IDT(SEQTAB, TS)
+    taxoIDT.dada2 <- IDT.dada2(taxoIDT)             
+    
+    # Save results
+    new.name <- paste(PARAM[x,"TAB"], "IDT", as.character(PARAM[x,"SP"]), sep=".")
+    
+    taxoTAB[[new.name]]     <- taxoIDT.dada2
+    taxoTAB.IDT[[new.name]] <- taxoIDT
+    
   }
+}
+
+names(taxoTAB)
+names(taxoTAB.IDT)
+
+View(taxoTAB[["OTUtab.cytB.R1.IDT.All"]])
 
 
-taxo.IDT.12S        <- IDT(seqtab.12s, TS.12S, R = FALSE)
-taxo.IDT.12S.IBIS   <- IDT(seqtab.12s.IBIS, TS.12S, R = FALSE)
+# Compare SEQ assignation -------------------------------------------------
 
-taxo.IDT.12S.F <- IDT(seqtab.12s.F, TS.12S, R = FALSE)
-taxo.IDT.12S.R <- IDT(seqtab.12s.R, TS.12S, R = TRUE)
+names(taxoTAB)
 
 
-taxo.IDT.cytB   <- IDT(seqtab.cytB, TS.CYTB, R = FALSE)
-taxo.IDT.cytB.F <- IDT(seqtab.cytB.F, TS.CYTB, R = FALSE)
-taxo.IDT.cytB.R <- IDT(seqtab.cytB.R, TS.CYTB, R = TRUE)
+
+SEQ.PARAM <- expand.grid(ASSIGN = c("RDP", "IDT"),
+                         SP = c("QC", "All"))
+
+COMP.SEQ <- list()
+
+for(x in c("12s", "cytB.R1", "cytB.R2")){
+  
+  for(y in c("ASV", "OTU")){
+    
+     for(z in c("Family", "Genus", "Species")){
+       
+       TAB <- paste(paste0(y,"tab"),  x, SEQ.PARAM[,"ASSIGN"], SEQ.PARAM[,"SP"], sep=".") 
+       
+       DATA <- as.data.frame(cbind(taxoTAB[[TAB[1]]][,z], 
+                     taxoTAB[[TAB[2]]][,z],
+                     taxoTAB[[TAB[3]]][,z],
+                     taxoTAB[[TAB[4]]][,z]))
+         
+       names(DATA) <- TAB
+       
+       COMP.SEQ[[paste(x,y,z,sep=".")]] <- DATA
+       
+     }
+  }
+}
+
+names(COMP.SEQ)
+
+View(COMP.SEQ[[1]])
 
 
 
 # Compil datasets ---------------------------------------------------------
 
+TAXO.final <- list()
 
+for(x in c("12s", "cytB.R1", "cytB.R2")){
+  
+  for(y in c("ASV", "OTU")){
+    
+    CLASS <- c("Phylum", "Class", "Order", "Family", "Genus", "Species")
+    
+    name <- paste(paste0(y,"tab"), x, "IDT", "All", sep = ".")
+    
+    print(name)
+    
+    TAXO.idt <- as.data.frame(taxoTAB[[name]])
+    TAXO.rdp <- as.data.frame(taxoTAB[[name %>% str_replace("IDT", "RDP")]])
+    
+    TAXO <- TAXO.idt %>% cbind(TAXO.rdp %>% select("Species"))
+    names(TAXO) <- c("Root", CLASS, "Species100")
+    
+    TAXO <- TAXO %>%  mutate(SpeciesFinal = ifelse(!is.na(Species), as.character(Species), as.character(Species100)))
+    
+    TAXO <- TAXO %>% mutate(TaxoFinal = paste(Root, Phylum, Class, Order, Family, Genus, SpeciesFinal, sep = ";"),
+                            TaxoFinal = str_replace_all(TaxoFinal, ";NA", "")) %>% 
+                     transmute(SEQ = row.names(TAXO.idt), Assign = TaxoFinal)
 
-compil.taxo <- function(TAXO, SEQTAB, CLASS = c("Class", "Order", "Family", "Genus", "Species")){
-  compil <- list()
-  
-  row.names(TAXO) <- NULL
-  
-  for(x in CLASS){
-    TAXO[which(is.na(TAXO[,x])),x] <- "Unknown" 
-    colnames(SEQTAB) <- TAXO[,x]     
-    
-    df <- data.frame(Sample = rownames(SEQTAB))
-    
-    #Compiler les résultats
-    for(n in sort(unique(TAXO[,x]))){
-      DATA <- SEQTAB[,which(TAXO[,x] == n)]
-      if(is.vector(DATA)){
-        df[,n] <-  DATA     
-      } else {
-        df[,n] <-  rowSums(DATA)     
-      }
-    }
-  
-    compil[[x]] <- df
-      
+    TAXO.final[[name %>% str_remove(".IDT.All")]] <- TAXO
+
   }
   
-  return(compil)
+}
+
+
+RES <- data.frame(Level = NULL, N = NULL, DATA = NULL)
+
+for(x in 1:length(TAXO.final)){
+  NEW <- str_count(TAXO.final[[x]]$Assign, ";") %>% 
+    table() %>% 
+    as.data.frame()
+  names(NEW) <- c("Level", "N") 
+    
+  NEW$LOCUS <- names(TAXO.final[x]) %>% str_remove("tab") %>% str_remove("ASV.") %>% str_remove("OTU.")
+  NEW$OTU   <- names(TAXO.final[x]) %>% str_remove("tab") %>% str_remove(".12s") %>% str_remove(".cytB.R[:digit:]")
+  
+  
+  RES <- rbind(RES, NEW)  
+  
+}
+
+RES %>% ggplot(aes(x = as.numeric(as.character(Level)), y = N, fill = LOCUS)) + 
+  geom_bar(stat="identity",  position = "dodge") + 
+  facet_grid(.~ OTU) + 
+  #ylim(0, 200) +
+  theme_bw()
+
+
+names(TAXO.final)
+
+
+# Add taxo to all seqTAV
+
+for(x in unique(PARAM$TAB)){
+   
+  print(x)
+
+  TAB  <- get(x)
+  TAB2 <- get(paste(x, "cor", sep= "."))
+  TAXO <- TAXO.final[[x]]
+  
+  nrow(TAB) == nrow(TAXO)
+  
+  TAB <- TAB %>% mutate(SEQ = row.names(.))
+  
+  NEW1 <- TAB %>% full_join(TAXO) %>% 
+          select(-SEQ)
+  
+  NEW2 <- TAB2 %>% full_join(TAB %>% select(ID, SEQ)) %>% 
+           full_join(TAXO) %>% 
+           select(-SEQ) 
+  
+  assign(paste(x, "wTAXO", sep = "."), NEW1)
+  assign(paste(x, "cor", "wTAXO", sep = "."), NEW2)
 
 }
 
 
-compil.RDP.12S <- compil.taxo(taxo.RDP.12S, seqtab.12s)
-compil.IDT.12S <- compil.taxo(taxo.IDT.12S[[2]], seqtab.12s)
-
-compil.RDP.12S.IBIS <- compil.taxo(taxo.RDP.12S.IBIS, seqtab.12s.IBIS)
-compil.IDT.12S.IBIS <- compil.taxo(taxo.IDT.12S.IBIS[[2]], seqtab.12s.IBIS)
-
-compil.RDP.12S.F <- compil.taxo(taxo.RDP.12S.F, seqtab.12s.F)
-compil.IDT.12S.F <- compil.taxo(taxo.IDT.12S.F[[2]], seqtab.12s.F)
-
-compil.RDP.12S.R <- compil.taxo(taxo.RDP.12S.R, seqtab.12s.R)
-compil.IDT.12S.R <- compil.taxo(taxo.IDT.12S.R[[2]], seqtab.12s.R)
+# Enregistrer les SEQTAB corrigées
+save(file = get.value("ALLtable.data"), 
+     list = ls() %>% str_subset("wTAXO")) # Pour enlever "SEQtable.df" 
 
 
-compil.RDP.cytB.F <- compil.taxo(taxo.RDP.cytB.F, seqtab.cytB.F)
-compil.IDT.cytB.F <- compil.taxo(taxo.IDT.cytB.F[[2]], seqtab.cytB.F)
+TABLEwTAXO <- ls() %>% str_subset("wTAXO")
 
-compil.RDP.cytB.R <- compil.taxo(taxo.RDP.cytB.R, seqtab.cytB.R)
-compil.IDT.cytB.R <- compil.taxo(taxo.IDT.cytB.R[[2]], seqtab.cytB.R)
+rm("TABLEwTAXO")
 
-compil.IDT.cytB <- compil.taxo(taxo.IDT.cytB[[2]], seqtab.cytB)
+for(x in ls() %>% str_subset("wTAXO")){
+  DATA <- get(x)
+  
+  SAMPLE <- names(DATA %>% select(-c(ID, Assign)))
+  
+  NEW <- DATA %>% gather(SAMPLE, key= "Sample", value = Read) %>% 
+           group_by(Assign, Sample) %>% 
+           summarise(N = sum(Read)) %>% 
+           mutate(Level = str_count(Assign, ";"))
+
+  assign(x %>%str_replace("wTAXO", "bySP"), NEW)
+  
+}
 
 
-# Save results ------------------------------------------------------------
 
-# Save compile
+# Save --------------------------------------------------------------------
 
-save(file = file.path(get.value("result.path"), "Compil.data"), 
-     list = ls(pattern = "compil."))
 
-save(file = file.path(get.value("result.path"), "Taxo.data"), 
-     list = c(ls(pattern = "taxo.IDT"),ls(pattern = "taxo.RDP")))
+# Enregistrer les SEQTAB corrigées
+save(file = get.value("ALLtable.data"), 
+     list = c(ls() %>% str_subset("wTAXO"),
+              ls() %>% str_subset("bySP"))
+   
+     )
 
-save.image(file.path(get.value("log.path"),"Assign_SP.Rdata"))

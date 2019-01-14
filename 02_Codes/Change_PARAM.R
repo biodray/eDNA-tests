@@ -111,6 +111,9 @@ add.param(PARAM) <- c("OTUtable.data", paste(get.value("result.data.path"),"OTUt
 
 add.param(PARAM) <- c("CORRECTEDtable.data", paste(get.value("result.data.path"),"CORRECTEDtable.data", sep = "/"))
 
+add.param(PARAM) <- c("ALLtable.data", paste(get.value("result.data.path"),"ALLtable.FINAL.data", sep = "/"))
+
+
 # Save Parameters ---------------------------------------------------------
 
 PARAM
