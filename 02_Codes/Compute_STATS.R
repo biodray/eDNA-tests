@@ -220,8 +220,8 @@ dev.off()
 
 ### Mes échantillons
 
-assign.graph(tab = ASVtab.cytB.R1.wTAXO, Sample = T, Tneg = F, Mix = F, 
-             maintitle = "12s ASVs - Mock community", 
+assign.graph(tab = ASVtab.12s.wTAXO, Sample = T, Tneg = F, Mix = F, 
+             maintitle = "12s ASVs - Samples", 
              Nlevel = c(2:6), 
              subAssign = "Root;Chordata;Teleostei;")
 
