@@ -78,6 +78,8 @@ add.param(PARAM) <- c("result.FQraw.path", "./01_Results/02_ReadsQ/FastQC_Raw")
 add.param(PARAM) <- c("result.OTUtables", "./01_Results/03_OTUtables")
 add.param(PARAM) <- c("result.ref", "./01_Results/04_Ref")
 
+add.param(PARAM) <- c("result.FINAL", "./01_Results/05_Final")
+
 add.param(PARAM) <- c("log.path", "./04_Log")
 
 
