@@ -163,7 +163,14 @@ for(x in 1:nrow(PARAM)){
 
 names(TS.ls)
 
+# Save training set
 TS.ls
+
+save(file = get.value("IDT.TS.data"), 
+     list = c("TS.ls")
+     
+)
+
 
 plot(TS.ls[["All.12s"]])
 plot(TS.ls[["All.cytB.R1"]])
@@ -267,7 +274,7 @@ for(x in 1:nrow(PARAM)){
 names(taxoTAB)
 names(taxoTAB.IDT)
 
-View(taxoTAB[["OTUtab.cytB.R1.IDT.All"]])
+#View(taxoTAB[["OTUtab.cytB.R1.IDT.All"]])
 
 
 # Compare SEQ assignation -------------------------------------------------
@@ -325,12 +332,20 @@ for(x in c("12s", "cytB.R1", "cytB.R2")){
     TAXO.idt <- as.data.frame(taxoTAB[[name]])
     TAXO.rdp <- as.data.frame(taxoTAB[[name %>% str_replace("IDT", "RDP")]])
     
-    TAXO <- TAXO.idt %>% cbind(TAXO.rdp %>% select("Species"))
-    names(TAXO) <- c("Root", CLASS, "Species100")
+    TAXO <- TAXO.idt %>% cbind(TAXO.rdp %>% select(CLASS))
+    names(TAXO) <- c("Root", CLASS, paste0(CLASS, "100"))
     
-    TAXO <- TAXO %>%  mutate(SpeciesFinal = ifelse(!is.na(Species), as.character(Species), as.character(Species100)))
+    # To change 100% identity assignation whenever possible
+    TAXO <- TAXO %>%  mutate(Phylum  = ifelse(!is.na(Species), as.character(Phylum),  as.character(Phylum100)),
+                             Class   = ifelse(!is.na(Species), as.character(Class),   as.character(Class100)),
+                             Order   = ifelse(!is.na(Species), as.character(Order),   as.character(Order100)),
+                             Family  = ifelse(!is.na(Species), as.character(Family),  as.character(Family100)),
+                             Genus   = ifelse(!is.na(Species), as.character(Genus),   as.character(Genus100)),
+                             Species = ifelse(!is.na(Species), as.character(Species), as.character(Species100))
+                             )
     
-    TAXO <- TAXO %>% mutate(TaxoFinal = paste(Root, Phylum, Class, Order, Family, Genus, SpeciesFinal, sep = ";"),
+    
+    TAXO <- TAXO %>% mutate(TaxoFinal = paste(Root, Phylum, Class, Order, Family, Genus, Species, sep = ";"),
                             TaxoFinal = str_replace_all(TaxoFinal, ";NA", "")) %>% 
                      transmute(SEQ = row.names(TAXO.idt), Assign = TaxoFinal)
 
@@ -367,7 +382,7 @@ RES %>% ggplot(aes(x = as.numeric(as.character(Level)), y = N, fill = LOCUS)) +
 names(TAXO.final)
 
 
-# Add taxo to all seqTAV
+# Add taxo to all seqTAB
 
 for(x in unique(PARAM$TAB)){
    

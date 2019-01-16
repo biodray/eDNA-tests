@@ -115,6 +115,9 @@ add.param(PARAM) <- c("CORRECTEDtable.data", paste(get.value("result.data.path")
 
 add.param(PARAM) <- c("ALLtable.data", paste(get.value("result.data.path"),"ALLtable.FINAL.data", sep = "/"))
 
+# IDT training set
+add.param(PARAM) <- c("IDT.TS.data", paste(get.value("result.data.path"),"IDT.TS.data", sep = "/"))
+
 
 # Save Parameters ---------------------------------------------------------
 
