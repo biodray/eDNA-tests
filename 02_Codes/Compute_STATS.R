@@ -29,8 +29,14 @@ library(ggpubr)    # on github - for nice graphs
 
 # Sample INFO
 
+DataSample <- read_excel(get.value("Sample.xl"),sheet="DataSample",na="NA",guess_max=100000)
+DataSample
+
 DataSeq    <- read_excel(get.value("Sample.xl"),sheet="DataSeq",na="NA",guess_max=100000)
 DataSeq
+
+DataSeq <- DataSeq %>% mutate (IbisID = paste0(Plaque,".",Puit)) %>% 
+  left_join(DataSample %>% select(SampleID, NomLac, CatSite, Nsite), by = "SampleID")
 
 # Mock community info
 
@@ -498,6 +504,42 @@ assign.graph(tab = ASVtab.12s.wTAXO, Sample = T, Tneg = F, Mix = F,
 
 # N haplotypes ------------------------------------------------------------
 
+haplo.mock <- function(tab){
+# ASVtab.12s.byID.SP 
+  
+  tab %>% 
+# Limit to MIX samples
+filter( str_detect(Assign, "Teleostei") == T, 
+        str_detect(Sample, "Mix"),
+       Level %in% c(5:6),
+      N > 0
+       ) %>% 
+  mutate(Mix = sapply(str_split(Sample, "_"), `[`, 2),
+         Puit = sapply(str_split(Sample, "p[:digit:]."), `[`, 2) %>% str_remove("_R[:digit:]")) %>% 
+  left_join(DataSeq %>% filter(SeqType %in% c("mix", "dup.mix")) %>% select(Puit, SeqType)) %>% 
+  # Remove technical duplicates
+  filter(SeqType == "mix") %>% 
+  mutate(Assign2 = str_replace(Assign, ";Salvelinus", ";Salvelinus;Salvelinus fontinalis"),  
+         Level = str_count(Assign2, ";")) %>%     
+  filter(Level == 6) %>% 
+  mutate(Species = sapply(str_split(Assign2, ";"), `[`, 7) ) %>% 
+  
+  group_by(Species, Mix) %>% 
+  summarise(Nhaplo = length(unique(ID))) %>% 
+  ggplot(aes(x = Species, y = Nhaplo, fill = Mix)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_hline(yintercept = 1, col = "black", linetype = 2) + 
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+}
+
+ggarrange(
+haplo.mock(ASVtab.12s.byID.SP),
+haplo.mock(OTUtab.12s.byID.SP),
+haplo.mock(ASVtab.cytB.R1.byID.SP),
+haplo.mock(OTUtab.cytB.R2.byID.SP),
+ncol = 2, nrow = 2)
 
 ls() %>% str_subset("byID.SP")
 
@@ -605,6 +647,27 @@ TEST %>% left_join(Nread.scale ) %>%
   ylab(NULL) + xlab(NULL)+
   facet_grid(Method ~ Locus) + 
   theme_bw() 
+
+
+
+# Samples - RIV vs PEL ----------------------------------------------------
+
+ASVtab.12s.cor.bySP
+
+DataSeq
+
+
+Comp.res <- ASVtab.12s.cor.bySP %>% mutate(Lac = sapply(str_split(Sample, "_"), `[`, 3),
+                                           Cat = sapply(str_split(Sample, "_"), `[`, 4),
+                                           Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% 
+                                    left_join(DataSeq %>% select(IbisID, Nsite), by = c("Puit" = "IbisID"))  %>% 
+                                    select(Assign, N, Lac, Cat, Nsite) %>% 
+                                    spread(key = Nsite, value = N, fill = 0) %>% 
+  mutate(KEEP = ASV + OTU) %>% 
+  filter(KEEP > 0) %>% select(-KEEP)spread()
+  
+  
+
 
 
 
