@@ -72,6 +72,150 @@ for(x in ls() %>% str_subset("wTAXO")){
 ls() %>% str_sub("byID.SP")
 
 
+
+# Basic stats -------------------------------------------------------------
+
+
+
+library(R.utils)
+
+reads.tab <- expand.grid(Sample = list.files(get.value("raw_unz_rename.path"), pattern = "12s", full.names = F) %>% 
+                                  str_subset("R1") %>% str_remove("12s_") %>% str_remove("_R1.fastq"),
+                         Locus = c("12s", "cytB"), 
+                         Sens = c("R1","R2"))
+
+for(x in 1:nrow(reads.tab)){
+  FILES <- file.path(get.value("raw_unz_rename.path"), paste(reads.tab[x,"Locus"], 
+                                                              reads.tab[x,"Sample"], 
+                                                              paste0(reads.tab[x,"Sens"], ".fastq"), 
+                                                              sep = "_"))
+  reads.tab[x, "Raw"] <- countLines(FILES)/4
+  
+}
+
+# Nreads total
+sum(reads.tab$Raw)
+
+# Nreads by locus
+
+reads.tab %>% group_by(Locus) %>% 
+              summarise(N =  sum(Raw)/1000000)
+
+
+# After the filtration step # TO DO - check the real name
+
+list.files(get.value("filt_dada2.path"))[1]
+
+
+for(x in 1:nrow(reads.tab)){
+  FILES <- file.path(get.value("filt_dada2.path"), paste(reads.tab[x,"Locus"], 
+                                                             reads.tab[x,"Sample"], 
+                                                             paste0(reads.tab[x,"Sens"], ".fastq"), 
+                                                             sep = "_"))
+   if(file.exists(FILES)){
+       
+   reads.tab[x, "Filt"] <- countLines(FILES)/4
+   } else {
+     reads.tab[x, "Filt"] <-      0
+   }
+
+  
+}
+
+# N ASV/OTU
+
+for(x in 1:nrow(reads.tab)){
+  
+  SAMPLE <- paste(reads.tab[x, "Locus"], 
+                   reads.tab[x, "Sample"] %>% str_replace("-", "."),
+                   sep = "_")
+  
+  if(reads.tab[x, "Locus"] == "12s"){
+    
+    N.ASV <- sum(ASVtab.12s[,SAMPLE])
+    N.OTU <- sum(OTUtab.12s[,SAMPLE])
+    
+  } else if (reads.tab[x, "Locus"] == "cytB"){
+    
+    if(reads.tab[x, "Sens"] == "R1"){
+      
+     N.ASV <- sum(ASVtab.cytB.R1[,paste(SAMPLE, "R1", sep = "_")])
+     N.OTU <- sum(OTUtab.cytB.R1[,paste(SAMPLE, "R1", sep = "_")])
+     
+    } else if(reads.tab[x, "Sens"] == "R2"){
+      
+     N.ASV <- sum(ASVtab.cytB.R2[,paste(SAMPLE, "R2", sep = "_")])
+     N.OTU <- sum(OTUtab.cytB.R2[,paste(SAMPLE, "R2", sep = "_")])
+     
+     } 
+  }
+  
+ reads.tab[x, "ASV"] <- N.ASV  
+ reads.tab[x, "OTU"] <- N.OTU    
+  
+}
+
+
+
+
+# N ASV/OTU corrected
+
+for(x in 1:nrow(reads.tab)){
+  
+    SAMPLE <- paste(reads.tab[x, "Locus"], 
+                  reads.tab[x, "Sample"] %>% str_replace("-", "."),
+                  sep = "_")
+  
+    if(SAMPLE %>% str_detect("Sample")){
+    
+  if(reads.tab[x, "Locus"] == "12s"){
+    
+    N.ASV <- sum(ASVtab.12s.cor[,SAMPLE])
+    N.OTU <- sum(OTUtab.12s.cor[,SAMPLE])
+    
+  } else if (reads.tab[x, "Locus"] == "cytB"){
+    
+    if(reads.tab[x, "Sens"] == "R1"){
+      
+      N.ASV <- sum(ASVtab.cytB.R1.cor[,paste(SAMPLE, "R1", sep = "_")])
+      N.OTU <- sum(OTUtab.cytB.R1.cor[,paste(SAMPLE, "R1", sep = "_")])
+      
+    } else if(reads.tab[x, "Sens"] == "R2"){
+      
+      N.ASV <- sum(ASVtab.cytB.R2.cor[,paste(SAMPLE, "R2", sep = "_")])
+      N.OTU <- sum(OTUtab.cytB.R2.cor[,paste(SAMPLE, "R2", sep = "_")])
+      
+    } 
+  }
+  
+    } else{
+      
+      N.ASV <- NA
+      N.OTU <- NA
+    }
+    
+    
+  reads.tab[x, "ASV.cor"] <- N.ASV  
+  reads.tab[x, "OTU.cor"] <- N.OTU    
+  
+}
+
+
+View(reads.tab)
+
+names(ASVtab.12s)
+
+
+
+# Nreads by locus
+
+reads.tab %>% group_by(Locus, Sens) %>% 
+  summarise(Nraw =  sum(Raw),
+            N.ASV = sum(ASV),
+            N.OTU = sum(OTU))
+
+
+
 # Comparison cytB R1 and R2 -----------------------------------------------
 
 # On the assignation ... not on the OTU/ASV because not the same!!!
