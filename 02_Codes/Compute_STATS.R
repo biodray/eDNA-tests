@@ -45,13 +45,15 @@ Mock.dat <- read_excel(get.value("Sample.xl"),sheet="Mock",na="NA",guess_max=100
 Mock.dat <- Mock.dat %>% gather(paste0("Mix",1:6), key="Mix", value = "Vol") %>% 
                          mutate(DNA = Vol * 10) # DNA concentration = 10 ng/ul
 
-Mock.data
+Mock.dat
 
 # Summary by SP
 
+load(get.value("CORRECTEDtable.data"))
 load(get.value("ALLtable.data"))
 
-ls() %>% str_sub("tab")
+
+ls() %>% str_subset("tab")
 
 # To compute haplotypes - byID.SP
 
@@ -69,13 +71,11 @@ for(x in ls() %>% str_subset("wTAXO")){
   
 }
 
-ls() %>% str_sub("byID.SP")
+ls() %>% str_subset("byID.SP")
 
 
 
 # Basic stats -------------------------------------------------------------
-
-
 
 library(R.utils)
 
@@ -87,8 +87,10 @@ reads.tab <- expand.grid(Sample = list.files(get.value("raw_unz_rename.path"), p
 for(x in 1:nrow(reads.tab)){
   FILES <- file.path(get.value("raw_unz_rename.path"), paste(reads.tab[x,"Locus"], 
                                                               reads.tab[x,"Sample"], 
-                                                              paste0(reads.tab[x,"Sens"], ".fastq"), 
-                                                              sep = "_"))
+                                                              paste0(reads.tab[x,"Sens"], ".fastq"), sep = "_"))
+  
+  print(FILES)
+  
   reads.tab[x, "Raw"] <- countLines(FILES)/4
   
 }
@@ -110,10 +112,12 @@ list.files(get.value("filt_dada2.path"))[1]
 for(x in 1:nrow(reads.tab)){
   FILES <- file.path(get.value("filt_dada2.path"), paste(reads.tab[x,"Locus"], 
                                                              reads.tab[x,"Sample"], 
-                                                             paste0(reads.tab[x,"Sens"], ".fastq"), 
+                                                             paste0(reads.tab[x,"Sens"], "_cut_filt.fastq"), 
                                                              sep = "_"))
    if(file.exists(FILES)){
-       
+   
+     print(FILES)
+         
    reads.tab[x, "Filt"] <- countLines(FILES)/4
    } else {
      reads.tab[x, "Filt"] <-      0
@@ -121,6 +125,8 @@ for(x in 1:nrow(reads.tab)){
 
   
 }
+
+View(reads.tab)
 
 # N ASV/OTU
 
@@ -203,6 +209,9 @@ for(x in 1:nrow(reads.tab)){
 
 View(reads.tab)
 
+#save(file = get.value("BasicStats.data"), 
+#     list = "reads.tab")
+
 names(ASVtab.12s)
 
 
@@ -214,7 +223,19 @@ reads.tab %>% group_by(Locus, Sens) %>%
             N.ASV = sum(ASV),
             N.OTU = sum(OTU))
 
-
+reads.tab %>% mutate(ASV.filt = Filt - ASV,
+                     ASV.raw = Raw - Filt) %>%
+              gather(ASV, ASV.filt, ASV.raw, key = "ASV", value = N.ASV) %>% 
+              mutate(P.ASV = N.ASV / Raw) %>% 
+              filter(Sens == "R1") %>% 
+  
+  ggplot(aes(x = Sample, y = P.ASV, fill = ASV)) +
+              geom_bar(stat = "identity") +
+              scale_y_continuous(name = "N reads") +
+              facet_grid(Locus ~.) +
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
 
 # Comparison cytB R1 and R2 -----------------------------------------------
 

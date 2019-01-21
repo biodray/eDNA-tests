@@ -118,6 +118,8 @@ add.param(PARAM) <- c("ALLtable.data", paste(get.value("result.data.path"),"ALLt
 # IDT training set
 add.param(PARAM) <- c("IDT.TS.data", paste(get.value("result.data.path"),"IDT.TS.data", sep = "/"))
 
+add.param(PARAM) <- c("BasicStats.data", paste(get.value("result.data.path"),"BasicStats.data", sep = "/"))
+
 
 # Save Parameters ---------------------------------------------------------
 
