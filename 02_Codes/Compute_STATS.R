@@ -771,7 +771,7 @@ DATA %>%  filter(N>=1) %>%
   labs(title= "Hello", x ="Sample", y = "Assigment") +
   guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
   theme_bw()+
-  facet_grid(Level~., scale = "free") +
+  facet_grid(Level~., scale = "free", space = "free") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
         axis.ticks.y = element_blank()) #+ coord_flip()
 
