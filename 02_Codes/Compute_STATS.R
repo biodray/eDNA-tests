@@ -51,7 +51,7 @@ Mock.dat
 
 load(get.value("CORRECTEDtable.data"))
 load(get.value("ALLtable.data"))
-
+load(get.value("BasicStats.data"))
 
 ls() %>% str_subset("tab")
 
@@ -72,6 +72,9 @@ for(x in ls() %>% str_subset("wTAXO")){
 }
 
 ls() %>% str_subset("byID.SP")
+
+
+
 
 
 
@@ -220,13 +223,15 @@ names(ASVtab.12s)
 
 reads.tab %>% group_by(Locus, Sens) %>% 
   summarise(Nraw =  sum(Raw),
+            Nfilt = sum(Filt),
             N.ASV = sum(ASV),
-            N.OTU = sum(OTU))
+            N.OTU = sum(OTU),
+            PRawToFilt = 1 - (Nfilt/Nraw))
 
 reads.tab %>% mutate(ASV.filt = Filt - ASV,
                      ASV.raw = Raw - Filt) %>%
               gather(ASV, ASV.filt, ASV.raw, key = "ASV", value = N.ASV) %>% 
-              mutate(P.ASV = N.ASV / Raw) %>% 
+              mutate(P.ASV =N.ASV / Raw) %>% 
               filter(Sens == "R1") %>% 
   
   ggplot(aes(x = Sample, y = P.ASV, fill = ASV)) +
@@ -236,6 +241,232 @@ reads.tab %>% mutate(ASV.filt = Filt - ASV,
   theme_bw()+
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
   
+
+# Negative samples --------------------------------------------------------
+
+
+tneg.stat <- function(tab) {
+  
+  DATA <- tab %>% select(ID,
+                         names(.) %>% str_subset("_Tneg"),
+                         names(.) %>% str_subset("_T[:digit:]")) %>% 
+    gather(c(names(.) %>% str_subset("_Tneg"),
+             names(.) %>% str_subset("_T[:digit:]")),
+           key = Sample, value = N)
+  
+  cat("\nN unique haplotypes:",
+      DATA %>% filter(N >= 1) %>% select(ID) %>% pull() %>%  unique() %>% length(),
+      
+      "\nN total reads:",
+      DATA %>% select(N) %>% pull() %>%  sum(),
+      
+      "\nMedian reads by sample:",
+      DATA %>% group_by(Sample) %>% summarise(N = sum(N)) %>%  select( N) %>% pull() %>% median(),
+      
+      "\nMean reads by sample:",
+      DATA %>% group_by(Sample) %>% summarise(N = sum(N)) %>%  select( N) %>% pull() %>% mean(),
+      
+      
+      "\nMin reads by sample:",
+      DATA %>% group_by(Sample) %>% summarise(N = sum(N)) %>%  select( N) %>% pull() %>% min(),
+      
+      "\nMax reads by sample:",
+      DATA %>% group_by(Sample) %>% summarise(N = sum(N)) %>%  select( N) %>% pull() %>% max(),
+      
+      "\nMedian reads by haplotype:",
+      DATA %>% group_by(ID) %>% summarise(N = sum(N)) %>%  filter(N >=1) %>% select( N) %>% pull() %>% median(),
+      
+      "\nMean reads by haplotype:",
+      DATA %>% group_by(ID) %>% summarise(N = sum(N)) %>%  filter(N >=1) %>% select( N) %>% pull() %>% mean(),
+      
+      
+      "\nMin reads by haplotype:",
+      DATA %>% group_by(ID) %>% summarise(N = sum(N)) %>%  filter(N >=1) %>% select( N) %>% pull() %>% min(),
+      
+      "\nMax reads by haplotype:",
+      DATA %>% group_by(ID) %>% summarise(N = sum(N)) %>%  filter(N >=1) %>% select( N) %>% pull() %>% max(),
+      
+      
+      sep = "\n")
+  
+}
+
+tneg.stat(ASVtab.12s)
+tneg.stat(OTUtab.12s)
+
+tneg.stat(ASVtab.cytB.R1)
+tneg.stat(OTUtab.cytB.R1)
+
+
+tneg.cor.stat <- function(tab, tab.cor) {
+  
+  N1 <- tab %>% select(ID,
+                       names(.) %>% str_subset("Sample")) %>% 
+    gather(names(.) %>% str_subset("Sample"),
+           key = Sample, value = N) %>% 
+    pull(N) %>% sum()
+  
+  N2 <- tab.cor %>% select(ID,
+                           names(.) %>% str_subset("Sample")) %>% 
+    gather(names(.) %>% str_subset("Sample"),
+           key = Sample, value = N) %>% 
+    pull(N) %>% sum()
+  
+  cat("\nP sequence removed:",
+      1 - (N2/N1),
+      "\nN sequences final",
+      N2,
+      sep = "\n")
+  
+  
+}
+
+
+tneg.cor.stat(ASVtab.12s, ASVtab.12s.cor)
+tneg.cor.stat(OTUtab.12s, OTUtab.12s.cor)
+
+tneg.cor.stat(ASVtab.cytB.R1, ASVtab.cytB.R1.cor)
+tneg.cor.stat(OTUtab.cytB.R1, OTUtab.cytB.R1.cor)
+
+
+
+# Stats on assignation ----------------------------------------------------
+
+
+
+Summary.Assign.cor <- data.frame(Assign = character(), Level = integer(), Nread = numeric(),Nhaplo = numeric(),  Nsample = integer(),  Data = character())
+
+
+for(x in ls() %>% str_subset("cor.byID.SP")){
+
+    DATA <- get(x) %>% filter(N >=1) %>% 
+      group_by(Assign, Level) %>% 
+    summarise(Nread = sum(N),
+              Nhaplo = length(unique(ID)),
+              Nsample = length(unique(Sample))) %>% 
+    mutate(Data = x %>% str_remove(".cor.byID.SP")) %>% 
+    as.data.frame()
+  
+  
+  Summary.Assign.cor <- rbind(Summary.Assign.cor, DATA)
+  
+}
+
+
+head( Summary.Assign.cor)
+
+Summary.Assign.cor %>% filter(Level > 2, 
+                            str_detect(.$Assign, "Root;Chordata;Teleostei;") == T,
+                            Nread > 0) %>% 
+  mutate(Assign = str_remove(Assign, "Root;Chordata;Teleostei;"),
+         Method = str_sub(Data, 1, 3),
+         Locus = Data %>% str_remove(paste0(Method,"tab.")),
+         Nread1000 = Nread / 1000) %>% 
+  arrange(Assign, Data) %>% 
+  ggplot(aes(y= Nread, x = Assign, fill = Method)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_grid(Locus ~ ., scale = "free") +
+  #scale_y_continuous(trans = "log") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) #+ coord_flip()
+
+
+
+Summary.Assign.cor %>% #filter(Level > 2, 
+  #        str_detect(.$Assign, "Root;Chordata;Teleostei;") == T) %>% 
+  mutate(#Assign = str_remove(Assign, "Root;Chordata;Teleostei;"),
+    Method = str_sub(Data, 1, 3),
+    Locus = Data %>% str_remove(paste0(Method,"tab."))) %>% 
+  arrange(Assign, Data) %>% 
+  ggplot(aes(y= Nsample, x = Assign, fill = Method)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_grid(Locus ~ .) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+# Graphe N read par niveau par dataset
+
+Assign.level <- Summary.Assign.cor %>%  mutate(Cat = ifelse(str_detect(.$Assign, "Teleostei") == T,
+                                                  "Teleostei",
+                                                  "Other"),
+                                     Method = str_sub(Data, 1, 3),
+                                     Locus = Data %>% str_remove(paste0(Method,"tab."))) %>% 
+  group_by(Level, Data, Locus, Method) %>% 
+  summarise(Sequences = sum(Nread),
+            Haplotypes = sum(Nhaplo))  %>% 
+  gather(Sequences, Haplotypes, key = Stat, value = N)
+
+
+
+Assign.level %>% filter(Locus %in% c("12s", "cytB.R1")) %>% 
+                 group_by(Stat, Locus, Level, Method) %>% 
+                 summarise(N = sum(N)) %>% 
+                 left_join(Assign.level %>% group_by(Stat, Locus, Method) %>% 
+                                            summarise(Ntot = sum(N))) %>% 
+                 mutate(Perc = round(N / Ntot,3)) %>% View()
+
+#library(scales)
+
+blank_theme <- theme_minimal()+
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.border = element_blank(),
+    panel.grid=element_blank(),
+    axis.ticks = element_blank(),
+    plot.title=element_text(size=14, face="bold")
+  )
+
+taxo.graph <- function(DATA) {
+  DATA %>% 
+  ggplot(aes(x = "", y = N, fill = as.factor(Level))) + 
+  geom_bar(position = "fill", stat = "identity", colour = "black") +
+  coord_polar("y", start=0, direction = -1) +
+  scale_fill_brewer(palette = "GnBu", 
+                    limits = c(0:6),
+                    labels = c("Aucun", "Phylum", "Classe", "Ordre", "Famille", "Genre", "Espèce") ) +
+  guides(fill = guide_legend(nrow = 2, title = NULL)) +
+  labs(title= NULL,
+       subtitle = NULL)+
+  ylab(NULL) + xlab(NULL)+
+  facet_grid(Stat ~ Method) + 
+  blank_theme +  theme(axis.text.x=element_blank(),
+                       #strip.background = element_rect(colour = "black", fill = "gray"),
+                       strip.text.x = element_text(colour = "black", face = "bold"),
+                       strip.text.y = element_text(colour = "black", face = "bold"),
+                       panel.spacing = unit(1, "lines")) 
+  #geom_text(aes(y = N/6 + c(0, cumsum(N)[-length(N)]), 
+  #              label = percent(N/100)), size=5)
+
+}  
+
+ggarrange(taxo.graph(Assign.level %>% filter(Locus %in% c("12s"))) + ggtitle("12s"),
+          taxo.graph(Assign.level %>% filter(Locus %in% c("cytB.R1")))+ ggtitle("cytB (R1)"),
+          labels = LETTERS[1:2],
+          nrow=1, ncol=2, common.legend = T,  legend = "bottom")
+
+
+# Nread.scale <- TEST %>% group_by(Data) %>% 
+#   summarise(Nread = sum(Nread)) %>%
+#   mutate(Scale = Nread / max(.$Nread)) %>% 
+#   select(Data, Scale)
+# 
+# TEST %>% left_join(Nread.scale ) %>% 
+#   ggplot(aes(x=Scale/2, y = Nread, fill = Level, width = Scale)) +
+#   geom_bar(position = "fill", stat = "identity") +
+#   coord_polar("y", start=0) +
+#   guides(fill = guide_legend(ncol = 1, title = "Depth")) +
+#   labs(title= "Proportion of reads assigned to each taxonomic depth",
+#        subtitle = "From no assignment (0) to species (6)")+
+#   ylab(NULL) + xlab(NULL)+
+#   facet_grid(Method ~ Locus) + 
+#   theme_bw() 
+
+
+
+
+
 
 # Comparison cytB R1 and R2 -----------------------------------------------
 
@@ -463,15 +694,101 @@ Mock.final <- Mock.dat %>% left_join(Mock.dat %>% group_by(Mix) %>% summarise(DN
                            mutate(DNAfinal = (DNA / DNAtot)*2) %>% 
                            select(Species, Mix, DNAfinal)
 
+# Liste des espèces
 
-Mock.res <- ASVtab.12s.wTAXO %>% mutate(Level = str_count(Assign, ";")) %>% 
-                     filter(Level %in% c(5:6),
-                            str_detect(.$Assign, "Teleostei") == T) %>% 
-                     mutate(Assign = str_remove(Assign, "Root;Chordata;Teleostei;")) %>% 
+
+pull.mock.sp <- function(tab){
+tab %>% mutate(Level = str_count(Assign, ";")) %>% 
+  filter(Level %in% c(5:6),
+         str_detect(.$Assign, "Teleostei") == T) %>% 
+  mutate(Assign = str_remove(Assign, "Root;Chordata;Teleostei;")) %>% 
+  select(Assign, Level, names(.) %>% str_subset("Mix") ) %>%
+  gather(names(.) %>% str_subset("Mix"), key = "sample", value = "Nread") %>% 
+  mutate(Mix = sapply(str_split(sample, "_"), `[`, 2),
+         Puit = sapply(str_split(sample, "p[:digit:]."), `[`, 2)) %>% 
+  left_join(DataSeq %>% filter(SeqType %in% c("mix", "dup.mix")) %>% select(Puit, SeqType)) %>% 
+  select(-Puit) %>% 
+  filter(Nread >=1) %>% 
+  pull(Assign) %>% unique()
+
+}
+
+pull.mock.sp(ASVtab.12s.wTAXO)
+pull.mock.sp(OTUtab.12s.wTAXO)
+
+pull.mock.sp(ASVtab.cytB.R1.wTAXO)
+pull.mock.sp(OTUtab.cytB.R1.wTAXO)
+
+pull.mock.sp(ASVtab.cytB.R2.wTAXO)
+pull.mock.sp(OTUtab.cytB.R2.wTAXO)
+
+# Graph
+
+
+split.name <- function(old, level){
+  new.level <- level +1
+  
+  new <- sapply(str_split(old, ";"), `[`, new.level)
+  
+  new
+  
+}
+
+str_split(DATA[1,"Assign"], ";")
+
+sapply(str_split(DATA[1,"Assign"], ";"),`[`, pull(DATA[1,"Level"] + 1))
+
+Mock.res[1,]
+
+split.name(Mock.res[1,"Assign"], Mock.res[1,"Level"])
+
+DATA <- ASVtab.cytB.R1.wTAXO %>% mutate(Level = str_count(Assign, ";")) %>% 
+                     #filter(Level %in% c(5:6),
+                    #        str_detect(.$Assign, "Teleostei") == T) %>% 
+                     #mutate(Assign = str_remove(Assign, "Root;Chordata;Teleostei;")) %>% 
                      select(Assign, Level, names(.) %>% str_subset("Mix") ) %>%
                      gather(names(.) %>% str_subset("Mix"), key = "sample", value = "Nread") %>% 
+                     group_by(Assign, Level, sample) %>% 
+                     summarise(N = sum(Nread)) %>% 
                      mutate(Mix = sapply(str_split(sample, "_"), `[`, 2),
-                            Puit = sapply(str_split(sample, "p[:digit:]."), `[`, 2)) %>% 
+                            Puit = sapply(str_split(sample, "p[:digit:]."), `[`, 2)) %>%
+                     left_join(DataSeq %>% filter(SeqType %in% c("mix", "dup.mix")) %>% select(Puit, SeqType)) %>% 
+                     select(-Puit) %>% mutate(Name.level = NA)
+
+for(x in 1:nrow(DATA)){
+  DATA$Name.level[x] <- sapply(str_split(DATA[x,"Assign"], ";"),`[`, pull(DATA[x,"Level"] + 1))
+  
+  }
+  
+
+DATA %>%  filter(N>=1) %>% 
+  
+  ggplot(aes(x = sample, y = Name.level, fill = N)) + 
+  geom_bin2d() + 
+  scale_fill_distiller(palette = "Spectral", trans = "log10") +
+  #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
+  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
+  labs(title= "Hello", x ="Sample", y = "Assigment") +
+  guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
+  theme_bw()+
+  facet_grid(Level~., scale = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.ticks.y = element_blank()) #+ coord_flip()
+
+
+
+
+
+
+<- DATA %>% left_join(Mock.final) %>% View()
+
+DATA %>% filter(Name.level == "Salvelinus")
+
+                    # Add last info on level
+                     mutate(Name.level =  split.name(Assign, Level)) %>% 
+  
+  
+  
                      mutate(Assign = str_replace(Assign, ";Salvelinus", ";Salvelinus;Salvelinus fontinalis"),  
                             Level = str_count(Assign, ";")) %>%     
                      filter(Level == 3) %>% 
@@ -486,12 +803,16 @@ Mock.res <- ASVtab.12s.wTAXO %>% mutate(Level = str_count(Assign, ";")) %>%
                      
                    
 cor.test(Mock.res %>% filter(Species == "Salvelinus fontinalis") %>% select(Nread) %>% pull(),
-         Mock.res %>% filter(Species == "Salvelinus fontinalis") %>% select(DNAfinal) %>% pull()
+         Mock.res %>% filter(Species == "Salvelinus fontinalis") %>% select(DNAfinal) %>% pull(),
+         method = "spearman"
          )
 
-cor.test(Mock.res %>% filter(Species == "Micropterus dolomieu") %>% select(Nread.log) %>% pull(),
+
+cor.test(Mock.res %>% filter(Species == "Micropterus dolomieu") %>% select(Nread) %>% pull(),
          Mock.res %>% filter(Species == "Micropterus dolomieu") %>% select(DNAfinal) %>% pull(),
          method = "spearman")
+
+
 
 cor.test(Mock.res %>% select(Nread) %>% pull(),
          Mock.res %>% select(DNAfinal) %>% pull(),
@@ -505,7 +826,9 @@ plot(Mock.res %>% select(Nread.log) %>% pull(),
 Mock.res %>% filter(Species == "Salvelinus fontinalis")
 
 Mock.res %>% ggplot(aes(x= DNAfinal, y = Nread.log, col = Species)) + 
-  geom_jitter() + geom_smooth(method = 'loess') + facet_wrap(~Species, nrow = 2) + theme_bw()
+  geom_jitter() + geom_smooth(method = 'loess') + 
+ # scale_y_continuous(limits = c(1,1000))+
+  facet_wrap(~Species, nrow = 2) + theme_bw()
 
 
 Mock.res %>% ggplot(aes(x= DNAfinal, y = Nread.log)) + 
@@ -736,83 +1059,6 @@ Summary.haplo %>% filter(Assign != "Root", Level > 2) %>%
 
 
 # Summary -----------------------------------------------------------------
-
-
-
-Summary.bySP.cor <- data.frame(Assign = character(), Level = integer(), Nread = numeric(), Nsample = integer(), Data = character())
-
-
-for(x in ls() %>% str_subset("cor.bySP")){
-  DATA <- get(x) %>% group_by(Assign, Level) %>% 
-    summarise(Nread = sum(N),
-              Nsample = length(which(N > 0))) %>% 
-    mutate(Data = x %>% str_remove(".cor.bySP")) %>% 
-    as.data.frame()
-  
-  
-  Summary.bySP.cor <- rbind(Summary.bySP.cor, DATA)
-  
-}
-
-
-Summary.bySP.cor %>% filter(Level > 2, 
-                            str_detect(.$Assign, "Root;Chordata;Teleostei;") == T,
-                            Nread > 0) %>% 
-  mutate(Assign = str_remove(Assign, "Root;Chordata;Teleostei;"),
-         Method = str_sub(Data, 1, 3),
-         Locus = Data %>% str_remove(paste0(Method,"tab.")),
-         Nread1000 = Nread / 1000) %>% 
-  arrange(Assign, Data) %>% 
-  ggplot(aes(y= Nread, x = Assign, fill = Method)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  facet_grid(Locus ~ ., scale = "free") +
-  #scale_y_continuous(trans = "log") +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1)) #+ coord_flip()
-
-
-
-Summary.bySP.cor %>% #filter(Level > 2, 
-  #        str_detect(.$Assign, "Root;Chordata;Teleostei;") == T) %>% 
-  mutate(#Assign = str_remove(Assign, "Root;Chordata;Teleostei;"),
-    Method = str_sub(Data, 1, 3),
-    Locus = Data %>% str_remove(paste0(Method,"tab."))) %>% 
-  arrange(Assign, Data) %>% 
-  ggplot(aes(y= Nsample, x = Assign, fill = Method)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  facet_grid(Locus ~ .) +
-  theme_bw() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-
-# Graphe N read par niveau par dataset
-
-TEST <- Summary.bySP.cor %>%  mutate(Cat = ifelse(str_detect(.$Assign, "Teleostei") == T,
-                                                  "Teleostei",
-                                                  "Other"),
-                                     Method = str_sub(Data, 1, 3),
-                                     Locus = Data %>% str_remove(paste0(Method,"tab."))) %>% 
-  group_by(Level, Data, Locus, Method) %>% 
-  summarise(Nread = sum(Nread),
-            Nsample = sum(Nsample)) 
-
-Nread.scale <- TEST %>% group_by(Data) %>% 
-  summarise(Nread = sum(Nread)) %>%
-  mutate(Scale = Nread / max(.$Nread)) %>% 
-  select(Data, Scale)
-
-
-TEST %>% left_join(Nread.scale ) %>% 
-  ggplot(aes(x=Scale/2, y = Nread, fill = Level, width = Scale)) +
-  geom_bar(position = "fill", stat = "identity") +
-  coord_polar("y", start=0) +
-  guides(fill = guide_legend(ncol = 1, title = "Depth")) +
-  labs(title= "Proportion of reads assigned to each taxonomic depth",
-       subtitle = "From no assignment (0) to species (6)")+
-  ylab(NULL) + xlab(NULL)+
-  facet_grid(Method ~ Locus) + 
-  theme_bw() 
-
 
 
 # Samples - RIV vs PEL ----------------------------------------------------

@@ -387,8 +387,8 @@ pdf(file.path(get.value("result.OTUtables"),"PCRheatmap.corrected.pdf"), width =
 dev.off()
 
 # Enregistrer les SEQTAB corrigées
-save(file = get.value("CORRECTEDtable.data"), 
-     list = ls(pattern = "tab.")[-13]) # Pour enlever "SEQtable.df" 
+#save(file = get.value("CORRECTEDtable.data"), 
+#     list = ls(pattern = "tab.")[-13]) # Pour enlever "SEQtable.df" 
 
 
 
