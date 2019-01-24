@@ -334,7 +334,12 @@ tneg.cor.stat(OTUtab.cytB.R1, OTUtab.cytB.R1.cor)
 
 
 
-Summary.Assign.cor <- data.frame(Assign = character(), Level = integer(), Nread = numeric(),Nhaplo = numeric(),  Nsample = integer(),  Data = character())
+Summary.Assign.cor <- data.frame(Assign = character(), 
+                                 Level = integer(), 
+                                 Nread = numeric(),
+                                 Nhaplo = numeric(),  
+                                 Nsample = integer(),  
+                                 Data = character())
 
 
 for(x in ls() %>% str_subset("cor.byID.SP")){
@@ -724,25 +729,18 @@ pull.mock.sp(OTUtab.cytB.R2.wTAXO)
 
 # Graph
 
+Mock.graph.data <- data.frame(Assign = character(),
+                              Level = integer(), 
+                              N = integer(), 
+                              Mix = character(), 
+                              SeqType = character(), 
+                              Name.level = character(),
+                              Data = character())
 
-split.name <- function(old, level){
-  new.level <- level +1
-  
-  new <- sapply(str_split(old, ";"), `[`, new.level)
-  
-  new
-  
-}
 
-str_split(DATA[1,"Assign"], ";")
+for(x in ls() %>% str_subset(".wTAXO") %>% str_remove(".cor") %>% unique()){
 
-sapply(str_split(DATA[1,"Assign"], ";"),`[`, pull(DATA[1,"Level"] + 1))
-
-Mock.res[1,]
-
-split.name(Mock.res[1,"Assign"], Mock.res[1,"Level"])
-
-DATA <- ASVtab.cytB.R1.wTAXO %>% mutate(Level = str_count(Assign, ";")) %>% 
+DATA <- get(x) %>% mutate(Level = str_count(Assign, ";")) %>% 
                      #filter(Level %in% c(5:6),
                     #        str_detect(.$Assign, "Teleostei") == T) %>% 
                      #mutate(Assign = str_remove(Assign, "Root;Chordata;Teleostei;")) %>% 
@@ -751,235 +749,78 @@ DATA <- ASVtab.cytB.R1.wTAXO %>% mutate(Level = str_count(Assign, ";")) %>%
                      group_by(Assign, Level, sample) %>% 
                      summarise(N = sum(Nread)) %>% 
                      mutate(Mix = sapply(str_split(sample, "_"), `[`, 2),
-                            Puit = sapply(str_split(sample, "p[:digit:]."), `[`, 2)) %>%
+                            Puit = sapply(str_split(sample, "p[:digit:]."), `[`, 2) %>% str_remove("_R[:digit:]")) %>%
                      left_join(DataSeq %>% filter(SeqType %in% c("mix", "dup.mix")) %>% select(Puit, SeqType)) %>% 
                      select(-Puit) %>% mutate(Name.level = NA)
 
-for(x in 1:nrow(DATA)){
-  DATA$Name.level[x] <- sapply(str_split(DATA[x,"Assign"], ";"),`[`, pull(DATA[x,"Level"] + 1))
+for(y in 1:nrow(DATA)){
+  DATA$Name.level[y] <- sapply(str_split(DATA[y,"Assign"], ";"),`[`, pull(DATA[y,"Level"] + 1))
   
   }
   
+DATA <- DATA %>% group_by() %>% select(Assign, Level, N, Mix, SeqType, Name.level) %>% 
+  mutate(Data = x %>% str_remove(".wTAXO")) %>% as.data.frame()
 
-DATA %>%  filter(N>=1) %>% 
+Mock.graph.data <- rbind(Mock.graph.data, DATA)
+
+}
+
+Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
+                           Locus = Data %>% str_remove(paste0(Method, "tab.")),
+                           Taxo = ifelse(Level == 2, "Ordre", 
+                                               ifelse(Level == 3, "Classe", 
+                                               ifelse(Level == 4, "Famille",
+                                               ifelse(Level == 5, "Genre", 
+                                               ifelse(Level == 6, "Espece", NA))))),
+                           Taxo = factor(Taxo, levels = c("Ordre", "Classe", "Famille", "Genre", "Espece" ))
+                           ) %>%
+  filter(str_detect(Assign, "Teleostei") == T,
+         SeqType == "mix",
+         Locus %in% c("12s", "cytB.R1")) %>%
+  filter(N>=1) %>% 
   
-  ggplot(aes(x = sample, y = Name.level, fill = N)) + 
+  ggplot(aes(x = Mix, y = Name.level, fill = N)) + 
   geom_bin2d() + 
   scale_fill_distiller(palette = "Spectral", trans = "log10") +
   #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
   #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
-  labs(title= "Hello", x ="Sample", y = "Assigment") +
+  labs(title= NULL, x ="Sample", y = "Assigment") +
   guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
   theme_bw()+
-  facet_grid(Level~., scale = "free") +
+  facet_grid(Taxo~Locus + Method, scale = "free", space = "free") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
-        axis.ticks.y = element_blank()) #+ coord_flip()
+        axis.ticks.y = element_blank(),
+        strip.text.y = element_text(angle = 0)) #+ coord_flip()
 
 
+# Abundance
 
 
+Mock.abund.data <- Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
+                                              Locus = Data %>% str_remove(paste0(Method, "tab."))) %>%  
+                                       filter(Locus %in%  c("12s", "cytB.R1"),
+                                              Name.level %in% c("Salvelinus fontinalis",
+                                                                "Salvelinus", 
+                                                                "Micropterus dolomieu")) %>%
+                                       mutate(Species = ifelse(Name.level == "Salvelinus", "Salvelinus fontinalis", Name.level)) %>% 
+                                       left_join(Mock.final)
+                                                 #by = c("Name.level" = "Species", "Mix" = "Mix"))
 
+Mock.abund.data %>% filter(!(Locus == "cytB.R1" & Name.level =="Salvelinus" )) %>% 
+                    group_by(Locus, Name.level, Method) %>% 
+                    summarise(rho= cor.test(N, DNAfinal, method = "spearman")$estimate,
+                              p.value= cor.test(N, DNAfinal, method = "spearman")$p.value,
+                              N = length(N))
 
-<- DATA %>% left_join(Mock.final) %>% View()
-
-DATA %>% filter(Name.level == "Salvelinus")
-
-                    # Add last info on level
-                     mutate(Name.level =  split.name(Assign, Level)) %>% 
-  
-  
-  
-                     mutate(Assign = str_replace(Assign, ";Salvelinus", ";Salvelinus;Salvelinus fontinalis"),  
-                            Level = str_count(Assign, ";")) %>%     
-                     filter(Level == 3) %>% 
-                     mutate(Species = sapply(str_split(Assign, ";"), `[`, 4) ) %>% 
-                     group_by(Species, Mix, Puit) %>%
-                     summarise(Nread = sum(Nread)) %>% 
-                     left_join(Mock.final) %>% 
-                     filter(!is.na(DNAfinal)) %>% 
-                     mutate(Nread.log = log10(Nread + 1)) %>% 
-                     left_join(DataSeq %>% filter(SeqType %in% c("mix", "dup.mix")) %>% select(Puit, SeqType)) %>% 
-                     select(-Puit)
-                     
-                   
-cor.test(Mock.res %>% filter(Species == "Salvelinus fontinalis") %>% select(Nread) %>% pull(),
-         Mock.res %>% filter(Species == "Salvelinus fontinalis") %>% select(DNAfinal) %>% pull(),
-         method = "spearman"
-         )
-
-
-cor.test(Mock.res %>% filter(Species == "Micropterus dolomieu") %>% select(Nread) %>% pull(),
-         Mock.res %>% filter(Species == "Micropterus dolomieu") %>% select(DNAfinal) %>% pull(),
-         method = "spearman")
-
-
-
-cor.test(Mock.res %>% select(Nread) %>% pull(),
-         Mock.res %>% select(DNAfinal) %>% pull(),
-         method = "spearman")
-
-par(mfrow = c(1,1))
-
-plot(Mock.res %>% select(Nread.log) %>% pull(),
-         Mock.res %>% select(DNAfinal) %>% pull())
-
-Mock.res %>% filter(Species == "Salvelinus fontinalis")
-
-Mock.res %>% ggplot(aes(x= DNAfinal, y = Nread.log, col = Species)) + 
-  geom_jitter() + geom_smooth(method = 'loess') + 
- # scale_y_continuous(limits = c(1,1000))+
-  facet_wrap(~Species, nrow = 2) + theme_bw()
-
-
-Mock.res %>% ggplot(aes(x= DNAfinal, y = Nread.log)) + 
-  geom_jitter() + geom_smooth(method = 'loess') #+ facet_wrap(~Species, nrow = 2) + theme_bw()
-
-
-Mock.res %>% ggplot(aes(x= Nread)) + 
-  geom_histogram()
-
-Mock.res$Species <- as.factor(Mock.res$Species)
-
-library(lme4)
-library(lmerTest)
-library(effects)
-
-mod1 <- lmer(Nread.log ~ DNAfinal + Species + (1|Mix), data = Mock.res)
-
-plot(allEffects(mod1))
-
-summary(mod1)
-
-
-E1 <- resid(mod1)
-F1 <- fitted(mod1)
-plot(x = F1, 
-     y = E1, 
-     xlab = "Fitted Values",
-     ylab = "Normalized residuals")
-abline(h = 0, lty = 2)
-
-
-
-# Function to create a heatmap for each sample from a SEQtab
-assign.graph <- function(tab, 
-                         Sample = T, Tneg = T, Mix = T, 
-                         maintitle = "Heatmap of species assigment", 
-                         Nlevel = c(0:6), 
-                         subAssign = "Root;"){
-  
-  Sample1 <- vector()
-  Tneg1   <- vector()
-  Mix1    <- vector()  
-  
-  Sample1 <- if(isTRUE(Sample)) names(tab) %>% str_subset("Sample")
-  
-  Tneg1   <- if(isTRUE(Tneg)) {
-    c(names(tab) %>% str_subset("Tneg"),
-      names(tab) %>% str_subset("T0"),
-      names(tab) %>% str_subset("T1"))
-  }
-  
-   Mix1    <- if(isTRUE(Mix)) names(tab) %>% str_subset("Mix")
- 
-  tab2 <- tab %>% mutate(Level = str_count(Assign, ";")) %>% 
-                 filter(Level %in% Nlevel,  
-                 str_detect(.$Assign, subAssign) == T) %>% 
-                 mutate(Assign = str_remove(Assign, subAssign)) %>% 
-    select(Assign,Sample1, Tneg1, Mix1) %>%
-    gather(Sample1, Tneg1, Mix1, key = "sample", value = "N") %>% 
-    filter(N>=1)  %>%
-    group_by(Assign, sample) %>% 
-    summarise(N = sum(N)) %>% 
-    arrange(desc(Assign))
-  
-  graph <- tab2 %>% 
-    ggplot(aes(x = sample, y = Assign, fill = N)) + 
-    geom_bin2d() + 
-    scale_fill_distiller(palette = "Spectral", trans = "log10") +
-    #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
-    #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
-    labs(title= maintitle, x ="Sample", y = "Assigment") +
-    guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
-    theme_bw()+
-    theme(axis.text.x = element_text(angle = 90, hjust = 1),
-          axis.ticks.y = element_blank())
-  
-  print(graph)
-  
-}
-
-
-GRAPH1 <- assign.graph(tab = ASVtab.12s.wTAXO, Sample = F, Tneg = F, Mix = T, 
-             maintitle = "12s ASVs - Mock community", 
-             Nlevel = c(1:6), 
-             subAssign = "Root;Chordata;")
-
-GRAPH2 <- assign.graph(tab = OTUtab.12s.wTAXO, Sample = F, Tneg = F, Mix = T, 
-             maintitle = "12s OTUs - Mock community", 
-             Nlevel = c(1:6), 
-             subAssign = "Root;Chordata;")
-
-
-
-GRAPH3 <- assign.graph(tab = ASVtab.cytB.R1.wTAXO, Sample = F, Tneg = F, Mix = T, 
-                       maintitle = "cytB (R1) ASVs - Mock community", 
-                       Nlevel = c(1:6), 
-                       subAssign = "Root;Chordata;")
-
-GRAPH4 <- assign.graph(tab = OTUtab.cytB.R1.wTAXO, Sample = F, Tneg = F, Mix = T, 
-                       maintitle = "cytB (R1) OTUs - Mock community", 
-                       Nlevel = c(1:6), 
-                       subAssign = "Root;Chordata;")
-
-GRAPH5 <- assign.graph(tab = ASVtab.cytB.R2.wTAXO, Sample = F, Tneg = F, Mix = T, 
-                       maintitle = "cytB (R2) ASVs - Mock community", 
-                       Nlevel = c(1:6), 
-                       subAssign = "Root;Chordata;")
-
-GRAPH6 <- assign.graph(tab = OTUtab.cytB.R2.wTAXO, Sample = F, Tneg = F, Mix = T, 
-                       maintitle = "cytB (R2) OTUs - Mock community", 
-                       Nlevel = c(1:6), 
-                       subAssign = "Root;Chordata;")
-
-
-ggarrange(GRAPH1, GRAPH2,
-          labels = LETTERS[1:2],
-          ncol = 1, nrow = 2,
-          common.legend = TRUE, legend = "right")
-
-ggarrange(GRAPH3, GRAPH4,
-          labels = LETTERS[3:4],
-          ncol = 1, nrow = 2,
-          common.legend = TRUE, legend = "right")
-
-ggarrange(GRAPH5, GRAPH6,
-          labels = LETTERS[5:6],
-          ncol = 1, nrow = 2,
-          common.legend = TRUE, legend = "right")
-
-pdf(file.path(get.value("result.FINAL"),"MockCommunity_heatmap.pdf"), width = 8, height = 6)
-
-  GRAPH1
-  GRAPH2
-  GRAPH3
-  GRAPH4
-  GRAPH5
-  GRAPH6
-
-dev.off()
-
-
-
-
-
-
-### Mes échantillons
-
-assign.graph(tab = ASVtab.12s.wTAXO, Sample = T, Tneg = F, Mix = F, 
-             maintitle = "12s ASVs - Samples", 
-             Nlevel = c(2:6), 
-             subAssign = "Root;Chordata;Teleostei;")
+Mock.abund.data %>% filter(!(Locus == "cytB.R1" & Name.level =="Salvelinus" )) %>%
+                    mutate(Ncor = N + 1) %>% 
+                     ggplot(aes(x = DNAfinal, y = Ncor, col = Method, shape = Method))+
+                           geom_smooth(method = "loess", se = T , lty = "dashed", size = 0.5, fill = "gray85")  +
+                           geom_jitter(width = 0.05, height = 0.05, size = 2)+
+                           scale_x_continuous(trans = "log10")+
+                           scale_y_continuous(trans = "log10")+
+                           facet_grid(Species~Locus) +
+                           theme_bw()
 
 
 
@@ -1057,8 +898,95 @@ Summary.haplo %>% filter(Assign != "Root", Level > 2) %>%
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
+# Samples -----------------------------------------------------------------
 
-# Summary -----------------------------------------------------------------
+
+Sample.data <- data.frame(Assign = character(), 
+                          Sample  = character(),
+                          N = integer(),
+                          Level = integer(),
+                          Name.level = character(),
+                          Cat = character(),
+                          Nsite = integer(),
+                          NomLac = character(),
+                          Data = character())
+
+for(x in ls() %>% str_subset(".cor.wTAXO")){
+
+  print(x)
+  
+DATA <-
+  
+  get(x) %>% gather(names(.) %>% str_subset("Sample"), key = Sample, value = N) %>% 
+        group_by(Assign, Sample) %>% 
+  summarise(N = sum(N)) %>% 
+  
+  mutate(Level = str_count(Assign, ";"),
+                           Name.level = NA,
+    Lac = sapply(str_split(Sample, "_"), `[`, 3),
+                                           Cat = sapply(str_split(Sample, "_"), `[`, 4),
+                                           Puit = sapply(str_split(Sample, "_"), `[`, 5) %>%
+      
+
+      str_remove("p")) %>% 
+                                    left_join(DataSeq %>% select(IbisID, Nsite, SeqType, NomLac), by = c("Puit" = "IbisID")) %>% 
+    filter(SeqType == "sample") %>% mutate(Data = x %>% str_remove(".cor.wTAXO"))   
+  
+  
+for(y in 1:nrow(DATA)){
+  DATA$Name.level[y] <- sapply(str_split(DATA[y,"Assign"], ";"),`[`, pull(DATA[y,"Level"] + 1))
+  
+  }
+
+DATA <- DATA %>% group_by() %>% select(-c(Lac, Puit, SeqType)) %>% 
+  as.data.frame()  
+ 
+Sample.data <- rbind(Sample.data, DATA)
+ 
+}  
+
+
+Sample.data %>% mutate(Method = str_sub(Data,1,3),
+                       Locus = Data %>% str_remove(paste0(Method, "tab.")),
+                       Taxo = ifelse(Level == 2, "Ordre", 
+                                               ifelse(Level == 3, "Classe", 
+                                               ifelse(Level == 4, "Famille",
+                                               ifelse(Level == 5, "Genre", 
+                                               ifelse(Level == 6, "Espece", NA))))),
+                           Taxo = factor(Taxo, levels = c("Ordre", "Classe", "Famille", "Genre", "Espece" ))
+                           ) %>%
+  filter(str_detect(Assign, "Teleostei") == T,
+         #SeqType == "mix",
+         Locus %in% c("12s"),
+         Method %in% c("ASV")) %>%#head()
+  group_by(Name.level, NomLac, Method, Locus, Taxo) %>% 
+    summarise(N = sum(N)) %>% 
+  #complete(Name.level, Cat, Nsite, NomLac, Method, Locus, Taxo, fill = list(0)) %>%  #View()
+#  filter(NomLac == "Alphonse", Name.level == "Culaea") %>% 
+  
+  filter(N>=1) %>% 
+  
+  ggplot(aes(x = NomLac, y = Name.level, fill = N)) + 
+  geom_bin2d() + 
+  scale_fill_distiller(palette = "Spectral", trans = "log10") +
+  #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
+  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
+  labs(title= NULL, x ="Sample", y = "Assigment") +
+  guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
+  theme_bw()+
+  facet_grid(Taxo~Locus + Method, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.ticks.y = element_blank(),
+        strip.text.y = element_text(angle = 0)) #+ coord_flip()
+                                    
+
+
+assign.graph(tab = ASVtab.12s.wTAXO, Sample = T, Tneg = F, Mix = F, 
+             maintitle = "12s ASVs - Samples", 
+             Nlevel = c(2:6), 
+             subAssign = "Root;Chordata;Teleostei;")
+
+
 
 
 # Samples - RIV vs PEL ----------------------------------------------------
