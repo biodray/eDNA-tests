@@ -99,6 +99,14 @@ add.param(PARAM) <- c("Raw.log", paste(get.value("log.path"),"Process_RAW.log.tx
 
 
 
+# External programs -------------------------------------------------------
+
+
+add.param(PARAM) <- c("blastn", "C:/Users/BourretA/Documents/Programs/ncbi-blast-2.8.1+/bin/blastn.exe")
+add.param(PARAM) <- c("makeblastdb", "C:/Users/BourretA/Documents/Programs/ncbi-blast-2.8.1+/bin/makeblastdb.exe")
+
+
+
 # Data --------------------------------------------------------------------
 
 # RAW

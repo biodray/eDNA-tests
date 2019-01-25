@@ -45,16 +45,21 @@ LacSample
 
 LacInv1 <- read_excel(get.value("Lac.xl"),sheet="Inventaire1996-2003",na="NA",guess_max=100000)
 LacInv1 <- na.replace(LacInv1, 0)
-LacInv1
+
+
+LacInv1 <- LacInv1 %>% inner_join(LacSample %>% select(-c(AbrLac)), by = "InvLac") %>% 
+           gather(names(.) %>% str_subset(" "), key= "Espece", value = "Presence")
+
+LacInv1 %>% group_by(NomLac) %>% summarise(Nsp = sum(Presence)) %>% View()
 
 LacInv2 <- read_excel(get.value("Lac.xl"),sheet="Inventaire2018",na="NA",guess_max=100000)
-LacInv2
+LacInv3 <- LacInv2 %>% left_join(LacInv1 %>% group_by(NomLac) %>% summarise(Nsp = sum(Presence)), by = "NomLac")
+
 
 LacPeche <- read_excel(get.value("Lac.xl"),sheet="StatPeche",na="NA",guess_max=100000)
 LacPeche
 
-LacInv1 <- LacInv1 %>% inner_join(LacSample %>% select(-c(AbrLac)), by = "InvLac") %>% 
-                       gather(names(.) %>% str_subset(" "), key= "Espece", value = "Presence")
+
 
 LacInv1 %>% filter(Presence == 0) %>% pull(Espece) %>% unique()
 
@@ -1034,5 +1039,39 @@ Comp.res <- ASVtab.12s.cor.bySP %>% mutate(Lac = sapply(str_split(Sample, "_"), 
   
 
 
+# Phase I -----------------------------------------------------------------
+
+LacInv3 %>% ggplot(aes(Nsp.x, Nsp.y)) + geom_count()
+
+cor.test(LacInv3$Nsp.x, LacInv3$Nsp.y, method = "spearman")
+
+# N species
+
+# Pour les lacs d'avant-pays, compter le N minimal d'espèce, puis modèle en fonction inventaire trad
 
 
+DATA <- Sample.data %>% mutate(Method = str_sub(Data,1,3),
+                       Locus = Data %>% str_remove(paste0(Method, "tab."))) %>% 
+   filter(str_detect(Assign, "Teleostei") == T,
+                       Level >= 6,
+                       Locus %in% c("12s"),
+                       Method %in% c("OTU")) %>%
+  mutate(Genus = sapply(str_split(Name.level, " "), `[`, 1)) %>% 
+  filter(Genus != "Sebaste",
+         N>=1) %>% 
+  group_by(NomLac) %>% summarise(Nsp.ADNe = length(unique(Genus))) %>% 
+  left_join(LacInv3, by = "NomLac") %>% 
+  filter(!is.na(Nsp.x)) 
+
+DATA %>% 
+  ggplot(aes(x = Nsp.y, y = Nsp.ADNe)) + geom_count()
+
+DATA %>% 
+  ggplot(aes(x = Nsp.ADNe)) + geom_histogram()
+
+
+mod <- lm(Nsp.ADNe ~ Nsp, data = DATA)
+summary(mod)
+
+cor.test(DATA$Nsp.ADNe, DATA$Nsp.x, method = "spearman")
+cor.test(DATA$Nsp.ADNe, DATA$Nsp.y, method = "spearman")
