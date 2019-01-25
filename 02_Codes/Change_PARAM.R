@@ -91,6 +91,7 @@ write.csv2(PARAM, file = file.path("./04_Log", "Options.csv"), row.names=F)
 # Files -------------------------------------------------------------------
 
 add.param(PARAM) <- c("Sample.xl", paste(get.value("info.path"),"DB_Echantillons.xlsx", sep = "/"))
+add.param(PARAM) <- c("Lac.xl", paste(get.value("info.path"),"DB_Lacs.xlsx", sep = "/"))
 
 add.param(PARAM) <- c("RefTAXO", paste(get.value("biodiv.path"),"Reference_taxonomie.csv", sep = "/"))
 

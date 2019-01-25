@@ -38,6 +38,32 @@ DataSeq
 DataSeq <- DataSeq %>% mutate (IbisID = paste0(Plaque,".",Puit)) %>% 
   left_join(DataSample %>% select(SampleID, NomLac, CatSite, Nsite), by = "SampleID")
 
+# Lac info
+
+LacSample <- read_excel(get.value("Lac.xl"),sheet="NomLac",na="NA",guess_max=100000)
+LacSample
+
+LacInv1 <- read_excel(get.value("Lac.xl"),sheet="Inventaire1996-2003",na="NA",guess_max=100000)
+LacInv1 <- na.replace(LacInv1, 0)
+LacInv1
+
+LacInv2 <- read_excel(get.value("Lac.xl"),sheet="Inventaire2018",na="NA",guess_max=100000)
+LacInv2
+
+LacPeche <- read_excel(get.value("Lac.xl"),sheet="StatPeche",na="NA",guess_max=100000)
+LacPeche
+
+LacInv1 <- LacInv1 %>% inner_join(LacSample %>% select(-c(AbrLac)), by = "InvLac") %>% 
+                       gather(names(.) %>% str_subset(" "), key= "Espece", value = "Presence")
+
+LacInv1 %>% filter(Presence == 0) %>% pull(Espece) %>% unique()
+
+
+ggarrange(LacPeche %>% ggplot(aes(x = CPUEjp, y = CPUEhm, col = Espece))+ geom_point(size = 2) +theme_classic(),
+          LacPeche %>% ggplot(aes(x = BPUEjp, y = BPUEhm, col = Espece))+ geom_point(size = 2) +theme_classic(),
+          LacPeche %>% ggplot(aes(x = CPUEjp, y = BPUEjp, col = Espece))+ geom_point(size = 2) +theme_classic(),
+          LacPeche %>% ggplot(aes(x = CPUEhm, y = BPUEhm, col = Espece))+ geom_point(size = 2) +theme_classic(),
+          ncol =2 , nrow =2, common.legend = T, legend = "right")
 # Mock community info
 
 Mock.dat <- read_excel(get.value("Sample.xl"),sheet="Mock",na="NA",guess_max=100000)
