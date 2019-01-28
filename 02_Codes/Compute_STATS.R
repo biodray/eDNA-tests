@@ -36,7 +36,8 @@ DataSeq    <- read_excel(get.value("Sample.xl"),sheet="DataSeq",na="NA",guess_ma
 DataSeq
 
 DataSeq <- DataSeq %>% mutate (IbisID = paste0(Plaque,".",Puit)) %>% 
-  left_join(DataSample %>% select(SampleID, NomLac, CatSite, Nsite), by = "SampleID")
+  left_join(DataSample %>% select(SampleID, NomLac, CatSite, Nsite, Volume, CorrFiltre), by = "SampleID")
+DataSeq
 
 # Lac info
 
@@ -50,25 +51,27 @@ LacInv1 <- na.replace(LacInv1, 0)
 LacInv1 <- LacInv1 %>% inner_join(LacSample %>% select(-c(AbrLac)), by = "InvLac") %>% 
            gather(names(.) %>% str_subset(" "), key= "Espece", value = "Presence")
 
-LacInv1 %>% group_by(NomLac) %>% summarise(Nsp = sum(Presence)) %>% View()
+#LacInv1 %>% group_by(NomLac) %>% summarise(Nsp = sum(Presence)) %>% View()
 
 LacInv2 <- read_excel(get.value("Lac.xl"),sheet="Inventaire2018",na="NA",guess_max=100000)
-LacInv3 <- LacInv2 %>% left_join(LacInv1 %>% group_by(NomLac) %>% summarise(Nsp = sum(Presence)), by = "NomLac")
+LacInv2 <- LacInv2 %>% gather(names(.) %>% str_subset(" "), key = Espece, value = Value)
+
+
+LacInv2 %>% spread(key = Mesure, value = Value) %>%  ggplot(aes(x = CPUE, y = BPUE, col = Espece, shape = Peche))+ geom_point(size = 2) +theme_classic() + facet_wrap(~Espece)
 
 
 LacPeche <- read_excel(get.value("Lac.xl"),sheet="StatPeche",na="NA",guess_max=100000)
-LacPeche
-
+LacPeche <- LacPeche %>% gather(names(.) %>% str_subset("PUE"), key = "Mesure", value = "Value") 
 
 
 LacInv1 %>% filter(Presence == 0) %>% pull(Espece) %>% unique()
-
 
 ggarrange(LacPeche %>% ggplot(aes(x = CPUEjp, y = CPUEhm, col = Espece))+ geom_point(size = 2) +theme_classic(),
           LacPeche %>% ggplot(aes(x = BPUEjp, y = BPUEhm, col = Espece))+ geom_point(size = 2) +theme_classic(),
           LacPeche %>% ggplot(aes(x = CPUEjp, y = BPUEjp, col = Espece))+ geom_point(size = 2) +theme_classic(),
           LacPeche %>% ggplot(aes(x = CPUEhm, y = BPUEhm, col = Espece))+ geom_point(size = 2) +theme_classic(),
           ncol =2 , nrow =2, common.legend = T, legend = "right")
+
 # Mock community info
 
 Mock.dat <- read_excel(get.value("Sample.xl"),sheet="Mock",na="NA",guess_max=100000)
@@ -976,6 +979,35 @@ Sample.data <- rbind(Sample.data, DATA)
  
 }  
 
+Sample.data %>% filter(Data == "ASVtab.12s") %>% select(Sample, Cat) %>% group_by(Cat) %>% summarise(Ntot = length(unique(Sample)))
+
+TEST <-Sample.data %>% filter(Data == "ASVtab.12s",
+                       N>=1,
+                       Cat %in% c("P", "R"),
+                       str_detect(Assign, "Teleostei") == T,
+                       Level >= 5) 
+
+TEST$Family <- sapply(str_split(TEST$Assign, ";"),`[`,5)
+
+
+TEST <- TEST %>% 
+  group_by(Cat, Level, Family, Name.level) %>% 
+  summarise(Nesp = length(unique(Sample))) %>% 
+  spread(Cat, Nesp) 
+
+TEST <- na.replace(TEST,0)
+
+TEST$P.rel <- TEST$P / 67
+TEST$R.rel <- TEST$R / 94
+
+TEST %>% View()
+
+TEST %>% ggplot(aes(P.rel, R.rel, col = Family)) + 
+                geom_point(size = 2) + 
+                geom_abline(slope =1, intercept = 0) + geom_text(aes(label=Name.level),hjust=0.2, vjust=-0.5)+
+                theme_classic() +
+                xlab("Pelagic samples (%)") + ylab("Riverain samples (%)") 
+
 
 Sample.data %>% mutate(Method = str_sub(Data,1,3),
                        Locus = Data %>% str_remove(paste0(Method, "tab.")),
@@ -987,17 +1019,17 @@ Sample.data %>% mutate(Method = str_sub(Data,1,3),
                            Taxo = factor(Taxo, levels = c("Ordre", "Classe", "Famille", "Genre", "Espece" ))
                            ) %>%
   filter(str_detect(Assign, "Teleostei") == T,
-         #SeqType == "mix",
+         NomLac %in% LacInv2$NomLac,
          Locus %in% c("12s"),
          Method %in% c("ASV")) %>%#head()
   group_by(Name.level, NomLac, Method, Locus, Taxo) %>% 
-    summarise(N = sum(N)) %>% 
+    #summarise(N = sum(N)) %>% 
   #complete(Name.level, Cat, Nsite, NomLac, Method, Locus, Taxo, fill = list(0)) %>%  #View()
 #  filter(NomLac == "Alphonse", Name.level == "Culaea") %>% 
   
   filter(N>=1) %>% 
   
-  ggplot(aes(x = NomLac, y = Name.level, fill = N)) + 
+  ggplot(aes(x = Sample, y = Name.level, fill = N)) + 
   geom_bin2d() + 
   scale_fill_distiller(palette = "Spectral", trans = "log10") +
   #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
@@ -1017,6 +1049,161 @@ assign.graph(tab = ASVtab.12s.wTAXO, Sample = T, Tneg = F, Mix = F,
              Nlevel = c(2:6), 
              subAssign = "Root;Chordata;Teleostei;")
 
+
+# Correlation with inventaire -----------------------------------------------------
+
+RES.COR.INV2 <- expand.grid(Espece = c( "Ameiurus nebulosus",
+                                        "Ambloplites rupestris",
+                                        "Chrosomus eos",
+                                        "Culaea inconstans",
+                                        "Perca flavescens",
+                                        "Salvelinus fontinalis",
+                                        "Semotilus atromaculatus"#,
+                                        #"Margariscus margarita",
+                                        #"Luxilus cornutus"
+                                        ),
+                            Peche = c("Verveux", "Alaska"),
+                            Mesure = c("CPUE", "BPUE"),
+                            Cat = c("R", "P", "T"),
+                            Cor = NA,
+                            Cor.pvalue = NA)
+
+for(x in 1:nrow(RES.COR.INV2)){
+
+  DATA <- Sample.data %>% filter(NomLac %in% LacInv2$NomLac,
+                       #Cat == "R",
+                       Data %in% "ASVtab.12s",
+                       Name.level %in% c(LacInv2$Espece, "Salvelinus")) %>% 
+                mutate(Espece = ifelse(Name.level == "Salvelinus", "Salvelinus fontinalis", Name.level)) %>% 
+                select(Sample, NomLac, Cat, Nsite, Espece, N) %>%
+                left_join(LacInv2) %>% 
+                filter(Peche == as.character(RES.COR.INV2[x,"Peche"]),
+                       Mesure == as.character(RES.COR.INV2[x,"Mesure"]),
+                       Espece == as.character(RES.COR.INV2[x,"Espece"])) %>% 
+                group_by(NomLac)
+              
+
+  if(RES.COR.INV2[x,"Cat"] == "T") {
+    
+  DATA <- DATA %>%  summarise(Nmed = median(N),
+                              Value = unique(Value)) 
+    
+  } else {
+    DATA <- DATA %>% filter(Cat == RES.COR.INV2[x,"Cat"]) %>%  
+      summarise(Nmed = median(N),
+                Value = unique(Value)) 
+    
+  }
+  
+  RES <- cor.test(DATA$Nmed, DATA$Value, method = "spearman")
+  
+  RES.COR.INV2[x,"Cor"] <- RES$estimate
+  RES.COR.INV2[x,"Cor.pvalue"] <- RES$p.value
+
+}
+
+
+RES.COR.INV2 %>% View()
+
+RES.COR.INV2$Methode <- paste(RES.COR.INV2$Peche, RES.COR.INV2$Mesure, RES.COR.INV2$Cat)
+
+RES.COR.INV2 %>% ggplot(aes(x = Espece, y = Methode, fill = Cor)) + 
+  geom_bin2d()+
+  scale_fill_distiller(palette = "Spectral") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+
+
+LacPeche$Mesure %>% unique()
+
+
+RES.COR.PECHE <- expand.grid(Espece = c("Salvelinus fontinalis"#,
+                                        #"Ambloplites rupestris",
+                                        #"Chrosomus eos",
+                                        #"Culaea inconstans",
+                                        #"Perca flavescens",
+                                        #"Salvelinus fontinalis",
+                                        #"Semotilus atromaculatus"#,
+                                        #"Margariscus margarita",
+                                        #"Luxilus cornutus"
+),
+#Peche = c("Verveux", "Alaska"),
+Mesure = c("CPUEjp", "CPUEhm", "BPUEjp", "BPUEhm"),
+Cat = c("R", "P", "T"),
+Cor = NA,
+Cor.pvalue = NA)
+
+for(x in 1:nrow(RES.COR.PECHE)){
+  
+  DATA <- Sample.data %>% filter(NomLac %in% LacPeche$NomLac,
+                                 #Cat == "R",
+                                 Data %in% "ASVtab.12s",
+                                 Name.level %in% c(LacInv2$Espece, "Salvelinus")) %>% 
+    mutate(Espece = ifelse(Name.level == "Salvelinus", "Salvelinus fontinalis", Name.level)) %>% 
+    select(Sample, NomLac, Cat, Nsite, Espece, N) %>%
+    left_join(LacPeche %>% select(-Lac)) %>% 
+    filter(#Peche == as.character(RES.COR.INV2[x,"Peche"]),
+           Mesure == as.character(RES.COR.PECHE[x,"Mesure"]),
+           Espece == as.character(RES.COR.PECHE[x,"Espece"])) %>% 
+    group_by(NomLac)
+  
+  
+  if(RES.COR.PECHE[x,"Cat"] == "T") {
+    
+    DATA <- DATA %>%  summarise(Nmed = median(N),
+                                Value = unique(Value)) 
+    
+  } else {
+    DATA <- DATA %>% filter(Cat == RES.COR.PECHE[x,"Cat"]) %>%  
+      summarise(Nmed = median(N),
+                Value = unique(Value)) 
+    
+  }
+  
+  RES <- cor.test(DATA$Nmed, DATA$Value, method = "spearman")
+  
+  RES.COR.PECHE[x,"Cor"] <- RES$estimate
+  RES.COR.PECHE[x,"Cor.pvalue"] <- RES$p.value
+  
+}
+
+
+RES.COR.PECHE %>% View()
+
+RES.COR.PECHE$Methode <- paste(RES.COR.PECHE$Mesure, RES.COR.PECHE$Cat)
+
+RES.COR.PECHE %>% ggplot(aes(x = Mesure, y = Cat, fill = Cor)) + 
+  geom_bin2d()+
+  scale_fill_distiller(palette = "Spectral") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+#
+
+DATA <- Sample.data %>% filter(NomLac %in% LacPeche$NomLac,
+                               #Cat == "R",
+                               Data %in% "ASVtab.12s",
+                               Name.level %in% c("Salvelinus")) %>% 
+  mutate(Espece = ifelse(Name.level == "Salvelinus", "Salvelinus fontinalis", Name.level),
+         N01 = ifelse(N>=1,1,0)) %>% 
+  select(Sample, NomLac, Cat, Nsite, Espece, N, N01) %>%
+  left_join(LacPeche %>% select(-Lac)) %>% 
+  spread(Mesure, Value) 
+
+
+DATA %>% head()
+
+DATA$Cat <- factor(DATA$Cat)
+
+mod1 <- glmer(N01 ~ Cat + BPUEhm + (1|NomLac), family = "binomial", data = DATA)
+
+summary(mod1)
+
+
+plot(allEffects(mod1))
 
 
 
@@ -1060,8 +1247,9 @@ DATA <- Sample.data %>% mutate(Method = str_sub(Data,1,3),
   filter(Genus != "Sebaste",
          N>=1) %>% 
   group_by(NomLac) %>% summarise(Nsp.ADNe = length(unique(Genus))) %>% 
-  left_join(LacInv3, by = "NomLac") %>% 
-  filter(!is.na(Nsp.x)) 
+  left_join(LacInv2, by = "NomLac")
+
+DATA
 
 DATA %>% 
   ggplot(aes(x = Nsp.y, y = Nsp.ADNe)) + geom_count()
@@ -1075,3 +1263,115 @@ summary(mod)
 
 cor.test(DATA$Nsp.ADNe, DATA$Nsp.x, method = "spearman")
 cor.test(DATA$Nsp.ADNe, DATA$Nsp.y, method = "spearman")
+
+
+# PCA
+
+
+DATA <- ASVtab.12s.cor.bySP %>% mutate(Lac = sapply(str_split(Sample, "_"), `[`, 3),
+                                       Cat = sapply(str_split(Sample, "_"), `[`, 4),
+                                       Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% 
+                                left_join(DataSeq %>% select(IbisID, NomLac, CatSite, Nsite), by = c("Puit" = "IbisID"))  %>% 
+                                filter(NomLac %in% LacInv2$NomLac,
+                                      Level == 6,
+                                       str_detect(Assign, "Teleostei")==T) %>%
+                                mutate(Species = sapply(str_split(Assign, ";"), `[`, 7)) %>%
+                                group_by() %>% 
+                                select(Sample, Species, N) %>% 
+                                mutate(N = ifelse(N>=1,1,0)) %>% 
+                                spread(key = Species, value = N) 
+DATA$KEEP <- rowSums(DATA[,-1])
+  
+DATA <- DATA %>% filter(KEEP >= 1) %>% select(-c(KEEP))
+
+library(vegan)
+
+str(DATA)
+
+  
+DATA.jac <- vegdist(DATA[,-1], method="jac") 
+
+summary(DATA.jac)
+
+
+library(phangorn)
+
+?pcoa
+DATA.jac.pcoa<-pcoa(DATA.jac)
+
+
+RES <- cbind(DATA[,1], DATA.jac.pcoa$vectors)
+
+RES <-  RES %>% mutate(Lac = sapply(str_split(Sample, "_"), `[`, 3),
+                       Cat = sapply(str_split(Sample, "_"), `[`, 4))
+
+RES %>% ggplot(aes(x = Axis.1, y =Axis.2, col = Lac, shape= Cat)) + 
+  geom_point() + 
+  #facet_wrap(~Lac) + 
+  theme_bw()
+
+# Extraction des résultats
+DATA.jac.pcoa
+
+# Représentation graphique
+biplot.pcoa(DATA.jac.pcoa)
+
+
+
+DATA.jac.upgma <- upgma(DATA.jac)
+
+DATA.jac.upgma[["tip.label"]] <- paste(RES$Lac, RES$Cat, sep = "-")
+
+
+plot(DATA.jac.upgma)
+
+
+
+summary(DATA.cca)
+
+View(DATA)
+
+
+summary(DATA.jac.pcoa)
+
+  mutate(Lac = sapply(str_split(Sample, "_"), `[`, 3),
+                                           Cat = sapply(str_split(Sample, "_"), `[`, 4),
+                                           Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% 
+  left_join(DataSeq %>% select(IbisID, Nsite), by = c("Puit" = "IbisID"))  %>% 
+  select(Assign, N, Lac, Cat, Nsite) %>% 
+  spread(key = Nsite, value = N, fill = 0)
+
+
+
+# Salvelinus detection ----------------------------------------------------
+
+
+DATA <- ASVtab.12s.cor.bySP %>% mutate(#Lac = sapply(str_split(Sample, "_"), `[`, 3),
+                                       #Cat = sapply(str_split(Sample, "_"), `[`, 4),
+                                       Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% 
+    left_join(DataSeq %>% select(IbisID, NomLac, CatSite, Nsite, Volume, CorrFiltre), by = c("Puit" = "IbisID"))  %>% 
+    filter(str_detect(Assign, "Micropterus dolomieu")==T,
+           CorrFiltre != 0) %>%
+    group_by() %>% 
+    select(NomLac, CatSite, Volume, CorrFiltre, N) %>% 
+    mutate(N = ifelse(N>=1,1,0)) %>% 
+    left_join(LacInv1 %>% filter(Espece == "Micropterus dolomieu") %>% select(NomLac, Presence))
+
+
+  
+DATA$CatSite <- factor(DATA$CatSite)
+DATA$CorrFiltre <- factor(DATA$CorrFiltre)
+DATA$Volume <- factor(DATA$Volume)
+DATA$Presence <- factor(DATA$Presence)
+
+library(lme4)    
+
+mod1 <- glmer(N ~ CatSite + Volume + CorrFiltre + Presence + (1|NomLac), family = "binomial", data = DATA)  
+mod1 <- glmer(N ~ CatSite + (1|NomLac), family = "binomial", data = DATA)  
+
+summary(mod1)    
+    
+library(effects)
+
+plot(allEffects(mod1))
+
