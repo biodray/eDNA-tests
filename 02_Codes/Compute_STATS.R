@@ -606,16 +606,16 @@ Dup.graph <- function(tab){
   COR.RES <- cor.test(Dup.res$dup.mix, Dup.res$mix, method = "spearman")
   
   Dup.res %>% mutate(dup.mix = dup.mix + 1,
-                     mix = mix +1) %>%  
+                     mix = mix + 1) %>%  
     ggplot(aes(x = mix, y = dup.mix, col = Mix)) + 
     # Add a 1:1 line
     geom_abline(intercept = 0, colour = "gray", slope = 1, linetype = 1, show.legend = FALSE ) +
     geom_jitter(width = 0.05, height = 0.05) +
-    scale_x_continuous(name = "N reads - sample 1", trans = "log10") +
-    scale_y_continuous(name = "N reads - sample 2",trans = "log10") +
+    scale_x_continuous(name = "N lectures - échantillon 1", trans = "log10") +
+    scale_y_continuous(name = "N lectures - échantillon 2", trans = "log10") +
     guides(col = guide_legend(title = NULL, nrow = 3)) +
-    annotate("text" , x = 10, y = 10000, 
-             label = paste("rho =", round(COR.RES$estimate, 3), ";", 
+    annotate("text" , x = 20, y = 10000, 
+             label = paste("rho =", round(COR.RES$estimate, 2), ";", 
                            "P", ifelse(COR.RES$p.value < 0.001, "< 0.001", paste("=", round(COR.RES$p.value, 3))))) +
     theme_classic() + 
     theme(legend.justification=c(1 ,0), 
@@ -636,7 +636,7 @@ GRAPH <- ggarrange(Dup.graph(ASVtab.12s.wTAXO) + guides(col=FALSE) + ggtitle("12
                    #common.legend = T, legend = "bottom"
                    )
 
-GRAPH
+print(GRAPH)
 
 ggsave(filename = file.path(get.value("result.FINAL"), "DuplicatedSamples.png"),
        width = 8, height = 8,
@@ -664,6 +664,10 @@ ASVOTU.graph <- function(tab.ASV, tab.OTU) {
   
   Comp.res <- rbind(tab.ASV %>% mutate(Method = "ASV"), tab.OTU %>% mutate(Method = "OTU")) %>% 
     select(-Level) %>% 
+    # Keep only fishes
+    filter(str_detect(Assign, "Teleostei")) %>% 
+    mutate(Order = sapply(str_split(Assign, ";"), `[`, 5)) %>% 
+    filter(!is.na(Order), Order != "Gadidae" ) %>% 
     # Limit to MIX samples
     filter(str_detect(Sample, "Mix")) %>% 
     mutate(Mix = sapply(str_split(Sample, "_"), `[`, 2),
@@ -671,7 +675,7 @@ ASVOTU.graph <- function(tab.ASV, tab.OTU) {
     left_join(DataSeq %>% filter(SeqType %in% c("mix", "dup.mix")) %>% select(Puit, SeqType)) %>% 
     # Remove technical duplicates
     filter(SeqType == "mix") %>% 
-    select(Assign, N, Method, Mix) %>% 
+    select(Assign, Order,N, Method, Mix) %>% 
     spread(key = Method, value = N, fill = 0) %>% 
     mutate(KEEP = ASV + OTU) %>% 
     filter(KEEP > 0) %>% select(-KEEP)
@@ -682,19 +686,62 @@ ASVOTU.graph <- function(tab.ASV, tab.OTU) {
   
   Comp.res %>% mutate(ASV = ASV + 1,
                       OTU = OTU +1) %>%  
-    ggplot(aes(x = ASV, y = OTU, col = Mix)) + 
+    ggplot(aes(x = ASV, y = OTU, col = Order)) + 
     # Add a 1:1 line
     geom_abline(intercept = 0, colour = "gray", slope = 1, linetype = 1, show.legend = FALSE ) +
         geom_jitter(width = 0.05, height = 0.05) +
-    scale_x_continuous(name = "N reads - ASV", trans = "log10") +
-    scale_y_continuous(name = "N reads - OTU",trans = "log10") +
-    guides(col = guide_legend(title = NULL, nrow = 3)) +
-    annotate("text" , x = 10, y = 10000, 
-             label = paste("rho =", round(COR.RES$estimate, 3), ";", 
+    scale_x_continuous(name = "N lectures - Assignation ASV", trans = "log10", limits= c(0.8,NA)) +
+    scale_y_continuous(name = "N lectures - Assignation OTU",trans = "log10", limits= c(0.8,NA)) +
+    guides(col = guide_legend(title = "Famille", ncol = 1, title.hjust = 0.5)) +
+    annotate("text" , x = 20, y = 10000, 
+             label = paste("rho =", round(COR.RES$estimate, 2), ";", 
                            "P", ifelse(COR.RES$p.value < 0.001, "< 0.001", paste("=", round(COR.RES$p.value, 3))))) +
     theme_classic() + 
-    theme(legend.justification=c(1 ,0), 
-          legend.position=c(1,0),
+    theme(#legend.justification=c(1 ,0), 
+          #legend.position=c(1,0),
+          legend.background = element_rect(fill = "gray90"))
+  
+  
+}
+
+ASVOTU2.graph <- function(tab.ASV, tab.OTU) {
+  
+  # Need the bySP version of tab
+  
+  
+  #tab.ASV <- ASVtab.12s.cor.bySP
+  #tab.OTU <- OTUtab.12s.cor.bySP
+  
+  Comp.res <- rbind(tab.ASV %>% mutate(Method = "ASV"), tab.OTU %>% mutate(Method = "OTU")) %>% 
+    select(-Level) %>% 
+    # Keep only fishes
+    filter(str_detect(Assign, "Teleostei")) %>% 
+    mutate(Order = sapply(str_split(Assign, ";"), `[`, 5)) %>% 
+    filter(!is.na(Order), Order != "Gadidae" ) %>% 
+    select(Assign, Sample, Order, N, Method) %>%  
+    spread(key = Method, value = N, fill = 0) %>% 
+    mutate(KEEP = ASV + OTU) %>% 
+    filter(KEEP > 0) %>% select(-KEEP)
+  
+  Comp.res
+  
+  COR.RES <- cor.test(Comp.res$ASV, Comp.res$OTU, method = "spearman")
+  
+  Comp.res %>% mutate(ASV = ASV + 1,
+                      OTU = OTU +1) %>%  
+    ggplot(aes(x = ASV, y = OTU, col = Order)) + 
+    # Add a 1:1 line
+    geom_abline(intercept = 0, colour = "gray", slope = 1, linetype = 1, show.legend = FALSE ) +
+    geom_jitter(width = 0.05, height = 0.05) +
+    scale_x_continuous(name = "N lectures - Assignation ASV", trans = "log10", limits= c(0.8,NA)) +
+    scale_y_continuous(name = "N lectures - Assignation OTU",trans = "log10", limits= c(0.8,NA)) +
+    guides(col = guide_legend(title = "Famille", ncol = 1, title.hjust = 0.5)) +
+    annotate("text" , x = 20, y = 10000, 
+             label = paste("rho =", round(COR.RES$estimate, 2), ";", 
+                           "P", ifelse(COR.RES$p.value < 0.001, "< 0.001", paste("=", round(COR.RES$p.value, 3))))) +
+    theme_classic() + 
+    theme(#legend.justification=c(1 ,0), 
+          #legend.position=c(1,0),
           legend.background = element_rect(fill = "gray90"))
   
   
@@ -708,6 +755,20 @@ GRAPH <- ggarrange(ASVOTU.graph(ASVtab.12s.bySP, OTUtab.12s.bySP) + guides(col=F
                    labels = LETTERS[1:2],
                    ncol = 2, nrow=1
                    #common.legend = T, legend = "bottom"
+)
+
+
+GRAPH <- ggarrange(ASVOTU.graph(ASVtab.12s.bySP, OTUtab.12s.bySP) + ggtitle("12S - Communauté simulée") ,
+                                      
+                   ASVOTU2.graph(ASVtab.12s.cor.bySP, OTUtab.12s.cor.bySP) + ggtitle("12S - Échantillons") ,
+                   
+                   ASVOTU.graph(ASVtab.cytB.R1.bySP, OTUtab.cytB.R1.bySP) + ggtitle("cytB (R1) - Communauté simulée"), 
+                   
+                   ASVOTU2.graph(ASVtab.cytB.R1.cor.bySP, OTUtab.cytB.R1.cor.bySP) + ggtitle("cytB (R1) - Échantillons"), 
+                   
+                   labels = LETTERS[1:4],
+                   ncol = 2, nrow=2,
+                   common.legend = T, legend = "right"
 )
 
 GRAPH
@@ -801,16 +862,18 @@ Mock.graph.data <- rbind(Mock.graph.data, DATA)
 
 Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
                            Locus = Data %>% str_remove(paste0(Method, "tab.")),
-                           Taxo = ifelse(Level == 2, "Ordre", 
-                                               ifelse(Level == 3, "Classe", 
+                           Taxo = ifelse(Level == 2, "Classe", 
+                                               ifelse(Level == 3, "Ordre", 
                                                ifelse(Level == 4, "Famille",
                                                ifelse(Level == 5, "Genre", 
-                                               ifelse(Level == 6, "Espece", NA))))),
-                           Taxo = factor(Taxo, levels = c("Ordre", "Classe", "Famille", "Genre", "Espece" ))
+                                               ifelse(Level == 6, "Espèce", NA))))),
+                           Taxo = factor(Taxo, levels = c("Classe", "Ordre", "Famille", "Genre", "Espèce" ))
                            ) %>%
   filter(str_detect(Assign, "Teleostei") == T,
+         str_detect(Assign, "Gadidae") == F,
          SeqType == "mix",
          Locus %in% c("12s", "cytB.R1")) %>%
+  mutate(Locus = ifelse(Locus == "12s", "12s", "cytB (R1)")) %>% 
   filter(N>=1) %>% 
   
   ggplot(aes(x = Mix, y = Name.level, fill = N)) + 
@@ -818,8 +881,8 @@ Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
   scale_fill_distiller(palette = "Spectral", trans = "log10") +
   #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
   #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
-  labs(title= NULL, x ="Sample", y = "Assigment") +
-  guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
+  labs(title= NULL, x ="Communauté simulée", y = "Assignation") +
+  guides(fill = guide_colourbar(title = "N lectures", title.hjust = 0)) + 
   theme_bw()+
   facet_grid(Taxo~Locus + Method, scale = "free", space = "free") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
@@ -849,11 +912,12 @@ Mock.abund.data %>% filter(!(Locus == "cytB.R1" & Name.level =="Salvelinus" )) %
 Mock.abund.data %>% filter(!(Locus == "cytB.R1" & Name.level =="Salvelinus" )) %>%
                     mutate(Ncor = N + 1) %>% 
                      ggplot(aes(x = DNAfinal, y = Ncor, col = Method, shape = Method))+
-                           geom_smooth(method = "loess", se = T , lty = "dashed", size = 0.5, fill = "gray85")  +
+                           geom_smooth(method = "lm", se = T , lty = "dashed", size = 0.5, fill = "gray85")  +
                            geom_jitter(width = 0.05, height = 0.05, size = 2)+
                            scale_x_continuous(trans = "log10")+
                            scale_y_continuous(trans = "log10")+
-                           facet_grid(Species~Locus) +
+  labs(title= NULL, x ="Concentration d'ADN (ng/ul)", y = "N lectures") +                         
+  facet_grid(Locus ~ Species) +
                            theme_bw()
 
 
@@ -939,7 +1003,7 @@ Sample.data <- data.frame(Assign = character(),
                           Sample  = character(),
                           N = integer(),
                           Level = integer(),
-                          Name.level = character(),
+                          NameAssign = character(),
                           Cat = character(),
                           Nsite = integer(),
                           NomLac = character(),
@@ -953,22 +1017,21 @@ DATA <-
   
   get(x) %>% gather(names(.) %>% str_subset("Sample"), key = Sample, value = N) %>% 
         group_by(Assign, Sample) %>% 
-  summarise(N = sum(N)) %>% 
-  
-  mutate(Level = str_count(Assign, ";"),
-                           Name.level = NA,
-    Lac = sapply(str_split(Sample, "_"), `[`, 3),
-                                           Cat = sapply(str_split(Sample, "_"), `[`, 4),
-                                           Puit = sapply(str_split(Sample, "_"), `[`, 5) %>%
-      
-
-      str_remove("p")) %>% 
-                                    left_join(DataSeq %>% select(IbisID, Nsite, SeqType, NomLac), by = c("Puit" = "IbisID")) %>% 
-    filter(SeqType == "sample") %>% mutate(Data = x %>% str_remove(".cor.wTAXO"))   
+        summarise(N = sum(N)) %>% 
+        
+        mutate(Level = str_count(Assign, ";"),
+                                 NameAssign = NA,
+          Lac = sapply(str_split(Sample, "_"), `[`, 3),
+                                                 Cat = sapply(str_split(Sample, "_"), `[`, 4),
+                                                Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% 
+          left_join(DataSeq %>% select(IbisID, Nsite, CatSite, SeqType, NomLac), by = c("Puit" = "IbisID")) %>% 
+          filter(SeqType == "sample") %>% 
+        mutate(Data = x %>% str_remove(".cor.wTAXO"),
+               Cat = CatSite)   
   
   
 for(y in 1:nrow(DATA)){
-  DATA$Name.level[y] <- sapply(str_split(DATA[y,"Assign"], ";"),`[`, pull(DATA[y,"Level"] + 1))
+  DATA$NameAssign[y] <- sapply(str_split(DATA[y,"Assign"], ";"),`[`, pull(DATA[y,"Level"] + 1))
   
   }
 
@@ -979,75 +1042,100 @@ Sample.data <- rbind(Sample.data, DATA)
  
 }  
 
-Sample.data %>% filter(Data == "ASVtab.12s") %>% select(Sample, Cat) %>% group_by(Cat) %>% summarise(Ntot = length(unique(Sample)))
 
-TEST <-Sample.data %>% filter(Data == "ASVtab.12s",
-                       N>=1,
-                       Cat %in% c("P", "R"),
-                       str_detect(Assign, "Teleostei") == T,
-                       Level >= 5) 
+Sample.data <- Sample.data %>% mutate(Method = str_sub(Data,1,3),
+                                      Locus = Data %>% str_remove(paste0(Method, "tab.")),
+                                      Taxo = ifelse(Level == 0, "Root",
+                                             ifelse(Level == 1, "Phylum",
+                                             ifelse(Level == 2, "Classe", 
+                                             ifelse(Level == 3, "Ordre", 
+                                             ifelse(Level == 4, "Famille",
+                                             ifelse(Level == 5, "Genre", 
+                                             ifelse(Level == 6, "Espece", NA))))))),
+                                      Taxo = factor(Taxo, levels = c("Root","Phylum","Classe", "Ordre", "Famille", "Genre", "Espece" ))
+                                      ) %>% 
+  left_join(LacInv1 %>% filter(Espece == "Salvelinus fontinalis") %>% select(NomLac, Location)) %>% 
+  mutate(Location = factor(Location, levels = c("Avant-pays", "Arriere-pays")))
 
-TEST$Family <- sapply(str_split(TEST$Assign, ";"),`[`,5)
+head(Sample.data)
 
+# Graph of what was done
 
-TEST <- TEST %>% 
-  group_by(Cat, Level, Family, Name.level) %>% 
-  summarise(Nesp = length(unique(Sample))) %>% 
-  spread(Cat, Nesp) 
-
-TEST <- na.replace(TEST,0)
-
-TEST$P.rel <- TEST$P / 67
-TEST$R.rel <- TEST$R / 94
-
-TEST %>% View()
-
-TEST %>% ggplot(aes(P.rel, R.rel, col = Family)) + 
-                geom_point(size = 2) + 
-                geom_abline(slope =1, intercept = 0) + geom_text(aes(label=Name.level),hjust=0.2, vjust=-0.5)+
-                theme_classic() +
-                xlab("Pelagic samples (%)") + ylab("Riverain samples (%)") 
-
-
-Sample.data %>% mutate(Method = str_sub(Data,1,3),
-                       Locus = Data %>% str_remove(paste0(Method, "tab.")),
-                       Taxo = ifelse(Level == 2, "Ordre", 
-                                               ifelse(Level == 3, "Classe", 
-                                               ifelse(Level == 4, "Famille",
-                                               ifelse(Level == 5, "Genre", 
-                                               ifelse(Level == 6, "Espece", NA))))),
-                           Taxo = factor(Taxo, levels = c("Ordre", "Classe", "Famille", "Genre", "Espece" ))
-                           ) %>%
-  filter(str_detect(Assign, "Teleostei") == T,
-         NomLac %in% LacInv2$NomLac,
-         Locus %in% c("12s"),
-         Method %in% c("ASV")) %>%#head()
-  group_by(Name.level, NomLac, Method, Locus, Taxo) %>% 
-    #summarise(N = sum(N)) %>% 
-  #complete(Name.level, Cat, Nsite, NomLac, Method, Locus, Taxo, fill = list(0)) %>%  #View()
-#  filter(NomLac == "Alphonse", Name.level == "Culaea") %>% 
+Sample.data %>% filter(str_detect(Assign, "Teleostei") == T,
+                   str_detect(Assign, "Gadidae") == F,
+                   str_detect(Assign, "Sebaste") == F,
+                   Locus %in% c("12s"),
+                   Method %in% c("ASV")) %>%
+  group_by(NomLac, Locus, Method, NameAssign, Taxo, Location) %>% 
+  summarise(Nmed = median(N),
+            Nmax = max(N)) %>%
   
-  filter(N>=1) %>% 
+  #mutate(Locus = ifelse(Locus == "12s", "12s", "cytB (R1)")) %>% 
+  filter(Nmax>=0) %>% # View()
   
-  ggplot(aes(x = Sample, y = Name.level, fill = N)) + 
-  geom_bin2d() + 
-  scale_fill_distiller(palette = "Spectral", trans = "log10") +
+  ggplot(aes(x = NomLac, y = NameAssign, fill = Nmax)) + 
+  geom_bin2d(col = "gray") + 
+  scale_fill_distiller(palette = "Spectral", trans = "log10",  na.value = "White") +
   #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
   #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
-  labs(title= NULL, x ="Sample", y = "Assigment") +
-  guides(fill = guide_colourbar(title = "N reads", title.hjust = 0)) + 
+  labs(title= NULL, x ="Lac", y = "Assignation") +
+  guides(fill = guide_colourbar(title = "N lectures", title.hjust = 0)) + 
   theme_bw()+
-  facet_grid(Taxo~Locus + Method, scale = "free", space = "free") +
+  facet_grid(Taxo~ Location, scale = "free", space = "free") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
         axis.ticks.y = element_blank(),
         strip.text.y = element_text(angle = 0)) #+ coord_flip()
-                                    
 
 
-assign.graph(tab = ASVtab.12s.wTAXO, Sample = T, Tneg = F, Mix = F, 
-             maintitle = "12s ASVs - Samples", 
-             Nlevel = c(2:6), 
-             subAssign = "Root;Chordata;Teleostei;")
+
+# Comparison riverain, pélagique
+
+Sample.data %>% filter(Data == "ASVtab.12s") %>% select(Sample, Cat) %>% group_by(Cat) %>% summarise(Ntot = length(unique(Sample)))
+
+
+Comp.RivPel <-Sample.data %>% filter(Locus %in% c("12s"),
+                                     Method %in% c("ASV"),#Data == "ASVtab.12s",
+                       N>=1,
+                       Cat %in% c("PEL", "RIV"),
+                       str_detect(Assign, "Teleostei") == T,
+                       Level >= 5) 
+
+Comp.RivPel$Famille <- sapply(str_split(Comp.RivPel$Assign, ";"),`[`,5)
+
+
+Comp.RivPel <-Comp.RivPel %>% 
+  group_by(Locus, Method, Cat, Level, Famille, NameAssign) %>% 
+  summarise(Nesp = length(unique(Sample))) %>% 
+  spread(Cat, Nesp) 
+
+Comp.RivPel <- na.replace(Comp.RivPel,0)
+
+Comp.RivPel$P.rel <- Comp.RivPel$PEL / 67 *100
+Comp.RivPel$R.rel <- Comp.RivPel$RIV / 95 * 100
+
+#Comp.RivPel %>% View()
+
+Comp.RivPel %>% ggplot(aes(P.rel, R.rel, col = Famille)) + 
+                geom_point(size = 2) + 
+                geom_abline(slope =1, intercept = 0) + 
+                geom_text(aes(label=NameAssign), check_overlap = TRUE, vjust=0, nudge_x = 0.01, size=3, hjust = 0)+
+                theme_bw() +
+                scale_x_continuous(limits=c(0,60))+
+                scale_y_continuous(limits=c(0,60))+
+                xlab("Échantillons pélagiques (%)") + ylab("Échantillons riverains (%)")
+               # facet_grid(Locus ~ Method)
+
+
+# Stats data
+
+Sample.data %>% filter(Data == "ASVtab.12s") %>% 
+                group_by(Location, NomLac, Cat) %>% 
+                summarise(Ntot = length(unique(Sample))) %>% 
+                spread(Cat, Ntot, fill = 0) %>% 
+                mutate(N = PEL + RIV) %>% View()
+
+
+
 
 
 # Correlation with inventaire -----------------------------------------------------
@@ -1064,17 +1152,21 @@ RES.COR.INV2 <- expand.grid(Espece = c( "Ameiurus nebulosus",
                                         ),
                             Peche = c("Verveux", "Alaska"),
                             Mesure = c("CPUE", "BPUE"),
-                            Cat = c("R", "P", "T"),
-                            Cor = NA,
-                            Cor.pvalue = NA)
+                            Cat = c("RIV", "PEL", "T"),
+                            CorMax = NA,
+                            CorMax.pvalue = NA,
+                            CorMed = NA,
+                            CorMed.pvalue = NA,
+                            CorMean = NA,
+                            CorMean.pvalue = NA)
 
 for(x in 1:nrow(RES.COR.INV2)){
 
   DATA <- Sample.data %>% filter(NomLac %in% LacInv2$NomLac,
                        #Cat == "R",
                        Data %in% "ASVtab.12s",
-                       Name.level %in% c(LacInv2$Espece, "Salvelinus")) %>% 
-                mutate(Espece = ifelse(Name.level == "Salvelinus", "Salvelinus fontinalis", Name.level)) %>% 
+                       NameAssign %in% c(LacInv2$Espece, "Salvelinus")) %>% 
+                mutate(Espece = ifelse(NameAssign == "Salvelinus", "Salvelinus fontinalis", NameAssign)) %>% 
                 select(Sample, NomLac, Cat, Nsite, Espece, N) %>%
                 left_join(LacInv2) %>% 
                 filter(Peche == as.character(RES.COR.INV2[x,"Peche"]),
@@ -1085,33 +1177,49 @@ for(x in 1:nrow(RES.COR.INV2)){
 
   if(RES.COR.INV2[x,"Cat"] == "T") {
     
-  DATA <- DATA %>%  summarise(Nmed = median(N),
+  DATA <- DATA %>%  summarise(Nmax = max(N),
+                              Nmed = median(N),
+                              Nmean = mean(N),
                               Value = unique(Value)) 
     
   } else {
     DATA <- DATA %>% filter(Cat == RES.COR.INV2[x,"Cat"]) %>%  
-      summarise(Nmed = median(N),
+      summarise(Nmax = max(N),
+                Nmed = median(N),
+                Nmean = mean(N),
                 Value = unique(Value)) 
     
   }
   
-  RES <- cor.test(DATA$Nmed, DATA$Value, method = "spearman")
+  RES1 <- cor.test(DATA$Nmax, DATA$Value, method = "spearman")
+  RES2 <- cor.test(DATA$Nmed, DATA$Value, method = "spearman")
+  RES3 <- cor.test(DATA$Nmean, DATA$Value, method = "spearman")
   
-  RES.COR.INV2[x,"Cor"] <- RES$estimate
-  RES.COR.INV2[x,"Cor.pvalue"] <- RES$p.value
-
+  RES.COR.INV2[x,"CorMax"]        <- RES1$estimate
+  RES.COR.INV2[x,"CorMax.pvalue"] <- RES1$p.value
+  RES.COR.INV2[x,"CorMed"]        <- RES2$estimate
+  RES.COR.INV2[x,"CorMed.pvalue"] <- RES2$p.value
+  RES.COR.INV2[x,"CorMean"]        <- RES3$estimate
+  RES.COR.INV2[x,"CorMean.pvalue"] <- RES3$p.value
 }
 
 
-RES.COR.INV2 %>% View()
+plot(RES.COR.INV2$CorMax, RES.COR.INV2$CorMean)
 
-RES.COR.INV2$Methode <- paste(RES.COR.INV2$Peche, RES.COR.INV2$Mesure, RES.COR.INV2$Cat)
+RES.COR.INV2.graph <- RES.COR.INV2 %>% gather(names(.) %>% str_subset("CorM"), key= Stat, value = Value)
 
-RES.COR.INV2 %>% ggplot(aes(x = Espece, y = Methode, fill = Cor)) + 
-  geom_bin2d()+
+RES.COR.INV2.graph$Methode <- paste(RES.COR.INV2$Peche, RES.COR.INV2$Mesure, RES.COR.INV2$Cat)
+
+RES.COR.INV2.graph %>% filter(Stat %in% c("CorMax", "CorMed", "CorMean")) %>% 
+  
+  ggplot(aes(x = Espece, y = Methode, fill = Value)) + 
+  geom_bin2d(color = "gray")+
   scale_fill_distiller(palette = "Spectral") +
   theme_minimal()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  facet_grid(Cat ~
+             Stat, scale= "free")
+ 
 
 
 
