@@ -998,7 +998,6 @@ Summary.haplo %>% filter(Assign != "Root", Level > 2) %>%
 
 # Samples -----------------------------------------------------------------
 
-
 Sample.data <- data.frame(Assign = character(), 
                           Sample  = character(),
                           N = integer(),
@@ -1024,7 +1023,7 @@ DATA <-
           Lac = sapply(str_split(Sample, "_"), `[`, 3),
                                                  Cat = sapply(str_split(Sample, "_"), `[`, 4),
                                                 Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% 
-          left_join(DataSeq %>% select(IbisID, Nsite, CatSite, SeqType, NomLac), by = c("Puit" = "IbisID")) %>% 
+          left_join(DataSeq %>% select(IbisID, Nsite, CatSite, SeqType, NomLac, CorrFiltre, Volume), by = c("Puit" = "IbisID")) %>% 
           filter(SeqType == "sample") %>% 
         mutate(Data = x %>% str_remove(".cor.wTAXO"),
                Cat = CatSite)   
@@ -1086,7 +1085,96 @@ Sample.data %>% filter(str_detect(Assign, "Teleostei") == T,
         axis.ticks.y = element_blank(),
         strip.text.y = element_text(angle = 0)) #+ coord_flip()
 
+# Comparison trad vs eDNA
 
+head(Sample.data)
+
+CompPAtrad <- Sample.data %>% mutate(NameAssign = ifelse(NameAssign == "Salvelinus", "Salvelinus fontinalis", NameAssign)) %>% 
+  filter(str_detect(Assign, "Teleostei"),
+         str_detect(NameAssign, " "),
+         str_detect(NameAssign, "Gadus morhua") == FALSE,
+         str_detect(NameAssign, "Salmo salar") == FALSE) %>% 
+  group_by(NameAssign, Location, NomLac, Method, Locus) %>% 
+  summarise(N = sum(N)) %>% 
+  mutate(PresenceADNe = ifelse(N >=1, 1, 0)) %>% 
+  full_join(LacInv1 %>% select(NomLac, Location, Espece, Presence),
+            by = c("NomLac" = "NomLac", "Location" = "Location", "NameAssign" = "Espece")) %>% 
+  mutate(PresenceADNe = ifelse(is.na (PresenceADNe), 0, PresenceADNe),
+         DiffInv = ifelse(PresenceADNe == Presence, 
+                          ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
+                   ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul"))) #%>% 
+  
+  #group_by(Method, Locus, DiffInv) %>% summarise(N = length(NomLac)) %>% View()
+  #View()
+CompPAtrad %>%   filter(Location == "Avant-pays",
+         Method %in% c("ASV", NA),
+         Locus %in% c("12s", NA)) %>% #View()
+  ggplot(aes(x=NomLac, y = NameAssign, fill = DiffInv)) +
+  geom_bin2d(col = "black") +
+  labs(title= NULL, x ="Lac", y = "Assignation") +
+  scale_fill_manual(limits = c("Present trad et ADNe", "Present trad seul", "Present ADNe seul", "Absent trad et ADNe"),  
+                    values = c("green", "red", "yellow", "white")) + 
+  theme_bw()+
+#  facet_grid(Locus ~ Method, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.ticks.y = element_blank(),
+        strip.text.y = element_text(angle = 0)) #+ coord_flip()
+
+
+CompPAtrad %>% filter(NameAssign == "Salvelinus fontinalis",
+                      Location == "Avant-pays") %>% 
+  ggplot(aes(y=NomLac, x = Method, fill = DiffInv)) +
+  geom_bin2d(col = "black") +
+  labs(title= NULL, x ="Lac", y = "Assignation") +
+  scale_fill_manual(limits = c("Present trad et ADNe", "Present trad seul", "Present ADNe seul", "Absent trad et ADNe"),  
+                    values = c("green", "red", "yellow", "white")) + 
+  theme_bw()+
+  facet_grid(. ~ Locus, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.ticks.y = element_blank(),
+        strip.text.y = element_text(angle = 0)) #+ coord_flip()
+
+# Idem mais pour les salvelidées
+
+Sample.data %>% filter(str_detect(NameAssign, "Salvelinus"),
+                       Location == "Avant-pays") %>% 
+  group_by(NameAssign, Location, NomLac, Method, Locus) %>% 
+  summarise(N = sum(N)) %>% 
+  mutate(PresenceADNe = ifelse(N >=1, 1, 0)) %>% 
+  select(-c(N)) %>% 
+  spread(NameAssign, value = PresenceADNe, fill = 0) %>%
+  rename(Salvelinus = "Salvelinus.ADNe", "Salvelinus fontinalis" = "Salvelinus fontinalis.ADNe") %>% 
+  left_join(LacInv1 %>% filter(str_detect(Espece, "Salvelinus")) %>% 
+                        spread(Espece, Presence) %>% 
+                        select(-c(InvLac, Rotenode, Location)),
+                        by = c("NomLac" = "NomLac")) %>% 
+  gather(names(.) %>% str_subset("Salvelinus"), key = Salvelinus, value = Presence) %>% 
+  mutate(Salvelinus = factor(Salvelinus, levels = c("Salvelinus fontinalis", "Salvelinus namaycush", "Salvelinus alpinus", "Salvelinus fontinalis.ADNe", "Salvelinus.ADNe"))) %>% 
+  filter(Locus %in% c("12s", "cytB.R1"),
+       Method %in% c("ASV", "OTU"),
+       Location == "Avant-pays") %>% 
+  ggplot(aes(y=NomLac, x = Salvelinus, fill = factor(Presence))) +
+  geom_bin2d(col = "black") +
+  labs(title= NULL, x ="", y = "Lac") +
+  scale_fill_manual(limits = c("0", "1"),  
+                    values = c("white","green")) + 
+  theme_bw()+
+  facet_grid(Locus ~ Method, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.ticks.y = element_blank(),
+        strip.text.y = element_text(angle = 0))
+  
+LacInv1 %>% head()  
+
+
+# ## try http:// if https:// URLs are not supported
+source("https://bioconductor.org/biocLite.R")
+## biocLite("BiocUpgrade") ## you may need this
+biocLite("ggtree")
+
+
+
+  pull(NameAssign) %>% unique()tion
 
 # Comparison riverain, pélagique
 
@@ -1454,18 +1542,17 @@ summary(DATA.jac.pcoa)
 # Salvelinus detection ----------------------------------------------------
 
 
-DATA <- ASVtab.12s.cor.bySP %>% mutate(#Lac = sapply(str_split(Sample, "_"), `[`, 3),
-                                       #Cat = sapply(str_split(Sample, "_"), `[`, 4),
-                                       Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% 
-    left_join(DataSeq %>% select(IbisID, NomLac, CatSite, Nsite, Volume, CorrFiltre), by = c("Puit" = "IbisID"))  %>% 
-    filter(str_detect(Assign, "Micropterus dolomieu")==T,
-           CorrFiltre != 0) %>%
-    group_by() %>% 
-    select(NomLac, CatSite, Volume, CorrFiltre, N) %>% 
-    mutate(N = ifelse(N>=1,1,0)) %>% 
-    left_join(LacInv1 %>% filter(Espece == "Micropterus dolomieu") %>% select(NomLac, Presence))
+DATA <-  Sample.data %>% mutate(NameAssign = ifelse(NameAssign == "Salvelinus", "Salvelinus fontinalis", NameAssign)) %>% 
+                  filter(str_detect(Assign, "Teleostei"),
+  str_detect(NameAssign, " "),
+  str_detect(NameAssign, "Gadus morhua") == FALSE,
+  str_detect(NameAssign, "Salmo salar") == FALSE )%>%   
+  select(NomLac, NameAssign, CatSite, Volume, CorrFiltre, N) %>% 
+  mutate(N = ifelse(N>=1,1,0)) %>% 
+  left_join(LacInv1 %>% select(NomLac, Presence))
 
-
+head(DATA)
+  
   
 DATA$CatSite <- factor(DATA$CatSite)
 DATA$CorrFiltre <- factor(DATA$CorrFiltre)
@@ -1474,7 +1561,12 @@ DATA$Presence <- factor(DATA$Presence)
 
 library(lme4)    
 
-mod1 <- glmer(N ~ CatSite + Volume + CorrFiltre + Presence + (1|NomLac), family = "binomial", data = DATA)  
+mod1 <- glmer(N ~ CatSite + Volume + CorrFiltre + Presence + NameAssign + 
+                  NameAssign:CatSite + NameAssign:Presence +
+                   (1|NomLac), 
+              family = "binomial", data = DATA,
+              control=glmerControl(optimizer="bobyqa"))
+
 mod1 <- glmer(N ~ CatSite + (1|NomLac), family = "binomial", data = DATA)  
 
 summary(mod1)    
