@@ -81,6 +81,17 @@ Mock.dat <- Mock.dat %>% gather(paste0("Mix",1:6), key="Mix", value = "Vol") %>%
 
 Mock.dat
 
+
+# Ref sequences
+
+# Fichier reference taxo - la boucle permet de verifier si le fichier a bien ete lu
+REF <- read_csv(get.value("RefTAXO"))
+if(ncol(REF) == 1 ) {
+  REF <- read_csv2(get.value("RefTAXO"))
+}
+REF
+
+
 # Summary by SP
 
 load(get.value("CORRECTEDtable.data"))
@@ -1102,23 +1113,35 @@ CompPAtrad <- Sample.data %>% mutate(NameAssign = ifelse(NameAssign == "Salvelin
   mutate(PresenceADNe = ifelse(is.na (PresenceADNe), 0, PresenceADNe),
          DiffInv = ifelse(PresenceADNe == Presence, 
                           ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
-                   ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul"))) #%>% 
-  
+                   ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul"))) %>% 
+ left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
+                         by = c("NameAssign" = "Espece_initial")) 
+
+
   #group_by(Method, Locus, DiffInv) %>% summarise(N = length(NomLac)) %>% View()
   #View()
 CompPAtrad %>%   filter(Location == "Avant-pays",
          Method %in% c("ASV", NA),
          Locus %in% c("12s", NA)) %>% #View()
-  ggplot(aes(x=NomLac, y = NameAssign, fill = DiffInv)) +
+  ggplot(aes(x=NomLac, y = NomFR, fill = DiffInv)) +
   geom_bin2d(col = "black") +
   labs(title= NULL, x ="Lac", y = "Assignation") +
+  #scale_y_discrete(position = "right") +
   scale_fill_manual(limits = c("Present trad et ADNe", "Present trad seul", "Present ADNe seul", "Absent trad et ADNe"),  
                     values = c("green", "red", "yellow", "white")) + 
-  theme_bw()+
-#  facet_grid(Locus ~ Method, scale = "free", space = "free") +
+  guides(fill = guide_legend(title = NULL)) + 
+  theme_bw ()+
+  facet_grid(Order + Family ~ ., 
+             scale = "free", space = "free", 
+             labeller = label_value,
+             switch = NULL) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
         axis.ticks.y = element_blank(),
-        strip.text.y = element_text(angle = 0)) #+ coord_flip()
+        strip.text.y = element_text(angle = 0),
+        panel.spacing = unit(0, "lines"),
+        strip.placement = "outside",
+        strip.background = element_rect(colour = "black", fill = "white"),
+        axis.text.y = element_text(colour="black", hjust = 1)) #+ coord_flip()
 
 
 CompPAtrad %>% filter(NameAssign == "Salvelinus fontinalis",
@@ -1248,6 +1271,11 @@ RES.COR.INV2 <- expand.grid(Espece = c( "Ameiurus nebulosus",
                             CorMean = NA,
                             CorMean.pvalue = NA)
 
+
+Sample.data.cor <- Sample.data %>% mutate(Nlog = ifelse(N == 0 , 0, log2(N)),
+                       Nlog.cor = Nlog / CorrFiltre / Volume * 1000) %>% 
+                  gather(Nlog, Nlog.cor, key = Correction, value = Ncor)
+
 for(x in 1:nrow(RES.COR.INV2)){
 
   DATA <- Sample.data %>% filter(NomLac %in% LacInv2$NomLac,
@@ -1308,11 +1336,141 @@ RES.COR.INV2.graph %>% filter(Stat %in% c("CorMax", "CorMed", "CorMean")) %>%
   facet_grid(Cat ~
              Stat, scale= "free")
  
+# Avec les corrections
+
+RES.COR.LOG.INV2 <- expand.grid(Espece = c( "Ameiurus nebulosus",
+                                        "Ambloplites rupestris",
+                                        "Chrosomus eos",
+                                        "Culaea inconstans",
+                                        "Perca flavescens",
+                                        "Salvelinus fontinalis",
+                                        "Semotilus atromaculatus"#,
+                                        #"Margariscus margarita",
+                                        #"Luxilus cornutus"
+                                        ),
+                                        Peche = c("Verveux", "Alaska"),
+                                        Mesure = c("CPUE", "BPUE"),
+                                        Cat = c("RIV", "PEL", "T"),
+                                        Correction = c("Nlog",  "Nlog.cor"),
+                                        CorMax = NA,
+                                        CorMax.pvalue = NA,
+                                        CorMed = NA,
+                                        CorMed.pvalue = NA,
+                                        CorMean = NA,
+                                        CorMean.pvalue = NA)
+
+
+for(x in 1:nrow(RES.COR.LOG.INV2)){
+  
+  DATA <- Sample.data.cor %>%   filter(NomLac %in% LacInv2$NomLac,
+         #Cat == "R",
+         Data %in% "ASVtab.12s",
+         NameAssign %in% c(LacInv2$Espece, "Salvelinus"),
+         Correction == RES.COR.LOG.INV2[x,"Correction"]) %>% 
+    mutate(Espece = ifelse(NameAssign == "Salvelinus", "Salvelinus fontinalis", NameAssign)) %>% 
+    select(Sample, NomLac, Cat, Nsite, Espece, Ncor) %>%
+    left_join(LacInv2) %>% 
+    filter(Peche == as.character(RES.COR.LOG.INV2[x,"Peche"]),
+           Mesure == as.character(RES.COR.LOG.INV2[x,"Mesure"]),
+           Espece == as.character(RES.COR.LOG.INV2[x,"Espece"])) %>% 
+    group_by(NomLac)
+  
+  
+  if(RES.COR.LOG.INV2[x,"Cat"] == "T") {
+    
+    DATA <- DATA %>%  summarise(Nmax = max(Ncor),
+                                Nmed = median(Ncor),
+                                Nmean = mean(Ncor),
+                                Value = unique(Value)) 
+    
+  } else {
+    DATA <- DATA %>% filter(Cat == RES.COR.LOG.INV2[x,"Cat"]) %>%  
+      summarise(Nmax = max(Ncor),
+                Nmed = median(Ncor),
+                Nmean = mean(Ncor),
+                Value = unique(Value)) 
+    
+  }
+  
+  RES1 <- cor.test(DATA$Nmax, DATA$Value, method = "spearman")
+  RES2 <- cor.test(DATA$Nmed, DATA$Value, method = "spearman")
+  RES3 <- cor.test(DATA$Nmean, DATA$Value, method = "spearman")
+  
+  RES.COR.LOG.INV2[x,"CorMax"]        <- RES1$estimate
+  RES.COR.LOG.INV2[x,"CorMax.pvalue"] <- RES1$p.value
+  RES.COR.LOG.INV2[x,"CorMed"]        <- RES2$estimate
+  RES.COR.LOG.INV2[x,"CorMed.pvalue"] <- RES2$p.value
+  RES.COR.LOG.INV2[x,"CorMean"]        <- RES3$estimate
+  RES.COR.LOG.INV2[x ,"CorMean.pvalue"] <- RES3$p.value
+}
+
+
+
+plot(RES.COR.LOG.INV2$CorMax, RES.COR.LOG.INV2$CorMean)
+
+RES.COR.LOG.INV2.graph <- RES.COR.LOG.INV2 %>% gather(names(.) %>% str_subset("CorM"), key= Stat, value = Value.cor)
+
+RES.COR.LOG.INV2.graph$Methode <- paste(RES.COR.LOG.INV2$Peche, RES.COR.LOG.INV2$Mesure, RES.COR.LOG.INV2$Cat)
+
+
+RES.COR.LOG.INV2 %>% filter(#Stat %in% c("CorMax", "CorMed", "CorMean"),
+                           Correction == "Nlog.cor") %>% View()
+
+RES.COR.LOG.INV2.graph %>% filter(Stat %in% c("CorMax", "CorMed", "CorMean"),
+                                  Correction == "Nlog.cor") %>% 
+  
+  ggplot(aes(x = Espece, y = Methode, fill = Value.cor)) + 
+  geom_bin2d(color = "gray")+
+  scale_fill_distiller(palette = "Spectral") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  facet_grid(Cat ~
+            Stat + Correction, scale= "free")
+
+
+RES.COR.LOG.INV2.graph %>% spread(Correction, Value.cor) %>% ggplot(aes(x = Nlog, y = Nlog.cor)) + geom_point()
+
+RES.COR.LOG.INV2.graph %>% spread(Correction, Value.cor) %>%  
+  mutate(diff = Nlog - Nlog.cor) %>% #head()
+  group_by(Peche, Mesure, Cat) %>% summarise(Mean = mean(diff, na.rm=T))
+  ggplot(aes(x = diff)) + geom_histogram()
+
+  
+Sample.data.cor %>% filter(Correction == "Nlog.cor",
+                           Method == "ASV",
+                           Locus == "12s",
+                           NameAssign %in% c(LacInv2$Espece),
+                           NomLac %in% LacInv2$NomLac) %>%
+  mutate(Espece = NameAssign) %>% 
+  left_join(LacInv2 %>% 
+  filter(#Peche == "Verveux",
+         Mesure == "BPUE")) %>% #View()
+  mutate(Method = paste(Peche, Mesure, sep = "-")) %>% 
+  group_by(NomLac, Cat, Espece, Method, Value) %>% 
+  summarise(Ncor = mean(Ncor)) %>% 
+  ggplot(aes(x=Value, y = Ncor, col = Cat)) + 
+  geom_jitter() + 
+  geom_smooth(method = "lm", se = F, na.rm=T)+
+ # facet_wrap( ~ Espece, scale = "free") + theme_bw()
+  facet_wrap( ~ Method + Espece, ncol = 6,  scale = "free")  + 
+  theme_bw() + 
+  theme(strip.text = element_text(size = 8))
+  
+
+
+head(Sample.data.cor)
+
+
+Sample.data.cor %>% filter(Ncor>=1) %>%  ggplot(aes(Ncor)) + geom_histogram() + facet_grid(Locus ~ Method)
+
+
+Sample.data.cor %>% spread(Correction, Ncor) %>% ggplot(aes(Nlog, Nlog.cor)) + geom_count()
 
 
 
 
-LacPeche$Mesure %>% unique()
+
+LacPeche$Mesure %>% unique() 
 
 
 RES.COR.PECHE <- expand.grid(Espece = c("Salvelinus fontinalis"#,
