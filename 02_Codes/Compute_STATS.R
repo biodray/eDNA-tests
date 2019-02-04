@@ -85,9 +85,9 @@ Mock.dat
 # Ref sequences
 
 # Fichier reference taxo - la boucle permet de verifier si le fichier a bien ete lu
-REF <- read_csv(get.value("RefTAXO"))
+REF <- read_csv(get.value("RefTAXO"), locale = locale(encoding = "ISO-8859-1"))
 if(ncol(REF) == 1 ) {
-  REF <- read_csv2(get.value("RefTAXO"))
+  REF <- read_csv2(get.value("RefTAXO"), locale = locale(encoding = "ISO-8859-1"))
 }
 REF
 
@@ -886,6 +886,8 @@ Mock.graph.data <- rbind(Mock.graph.data, DATA)
 
 }
 
+# Version longue
+
 Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
                            Locus = Data %>% str_remove(paste0(Method, "tab.")),
                            Taxo = ifelse(Level == 2, "Classe", 
@@ -915,6 +917,39 @@ Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
         axis.ticks.y = element_blank(),
         strip.text.y = element_text(angle = 0)) #+ coord_flip()
 
+# Version courte
+
+Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
+                           Locus = Data %>% str_remove(paste0(Method, "tab.")),
+                           Espece = ifelse(str_detect(Name.level, "Salvelinus"), "Salvelinus fontinalis", Name.level),
+                           NwNA = ifelse(N == 0, NA, N)) %>% 
+                    filter(Method == "ASV",
+                           Locus == "12s",
+                           SeqType == "mix",
+                           Mix %in% c("Mix1", "Mix2"),
+                           str_detect(Assign, "Teleostei"),
+                           str_detect(Espece, " "),
+                           N >= 1) %>% 
+  bind_rows (expand.grid(Mix = c("Mix1", "Mix2"),
+                         Espece = "Margariscus margarita")) %>% 
+  left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
+            by = c("Espece" = "Espece_initial"))  %>% #View()
+  mutate(Espece = ifelse(Espece == "Salvelinus fontinalis", "Salvelinus sp.", Espece),
+         NomFR =ifelse(Espece == "Salvelinus sp.",  "Salvelinus sp.", NomFR)) %>% 
+  
+  ggplot(aes(x = Mix, y = NomFR, fill = NwNA)) + 
+  geom_bin2d(col = "darkgray") + 
+  scale_fill_distiller(palette = "Spectral", trans = "log10",  na.value = "white", limits= c(1,NA)) +
+  #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
+  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
+  labs(title= NULL, x ="Communauté simulée", y = NULL) +
+  guides(fill = guide_colourbar(title = "N lectures", title.hjust = 0)) + 
+  theme_bw()+
+  facet_grid(Family~., scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.ticks.y = element_blank(),
+        strip.text.y = element_text(angle = 0)) #+ coord_flip()
+
 
 # Abundance
 
@@ -935,6 +970,8 @@ Mock.abund.data %>% filter(!(Locus == "cytB.R1" & Name.level =="Salvelinus" )) %
                               p.value= cor.test(N, DNAfinal, method = "spearman")$p.value,
                               N = length(N))
 
+# Version longue
+
 Mock.abund.data %>% filter(!(Locus == "cytB.R1" & Name.level =="Salvelinus" )) %>%
                     mutate(Ncor = N + 1) %>% 
                      ggplot(aes(x = DNAfinal, y = Ncor, col = Method, shape = Method))+
@@ -946,9 +983,21 @@ Mock.abund.data %>% filter(!(Locus == "cytB.R1" & Name.level =="Salvelinus" )) %
   facet_grid(Locus ~ Species) +
                            theme_bw()
 
+# Version courte
 
-
-
+Mock.abund.data %>% filter(Locus == "12s", Method == "ASV") %>% #View()
+  #mutate(Ncor = ifelse(N ==0, 0.8, N)) %>% 
+  ggplot(aes(x = DNAfinal, y = N, col = Species, shape = Species))+
+  geom_smooth(method = "lm", se = T , lty = "dashed", size = 1, fill = "gray85", show.legend=FALSE)  +
+  #geom_point(size = 2)+
+  geom_jitter(width = 0.05, height = 0, size = 2)+
+  scale_x_continuous(trans = "log10")+
+  scale_y_continuous(limits = c(1, 1000), trans = "log10")+
+  labs(title= NULL, x ="Concentration d'ADN (ng/ul)", y = "N lectures") +                         
+  #facet_grid(. ~ Species) +
+  
+ # guide_legend(title = "Espèce") +
+  theme_bw() + theme(legend.position = c(0.8, 0.1))
 
 
 
