@@ -255,12 +255,27 @@ for(x in 1:nrow(reads.tab)){
 }
 
 
-View(reads.tab)
+DataSeq
+
 
 #save(file = get.value("BasicStats.data"), 
 #     list = "reads.tab")
 
-names(ASVtab.12s)
+load(get.value("BasicStats.data"))
+
+View(reads.tab) 
+
+reads.tab %>% filter(!is.na(ASV.cor),
+                     Locus == "12s") %>% 
+              mutate(IbisID = sapply(str_split(Sample, "_"), `[`, 4) %>% str_remove("p") %>% str_replace("-", ".")) %>% 
+  left_join(DataSeq %>% select(IbisID, SeqType)) %>%
+  filter(SeqType == "sample") %>%
+  group_by(Locus, Sens) %>% 
+  summarise(Nraw = sum(Raw),
+            Nfilt = sum(Filt),
+            NASV = sum(ASV),
+            NASV.cor = sum(ASV.cor))
+  
 
 
 
