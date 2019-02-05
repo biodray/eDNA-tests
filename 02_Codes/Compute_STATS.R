@@ -988,16 +988,22 @@ Mock.abund.data %>% filter(!(Locus == "cytB.R1" & Name.level =="Salvelinus" )) %
 Mock.abund.data %>% filter(Locus == "12s", Method == "ASV") %>% #View()
   #mutate(Ncor = ifelse(N ==0, 0.8, N)) %>% 
   ggplot(aes(x = DNAfinal, y = N, col = Species, shape = Species))+
-  geom_smooth(method = "lm", se = T , lty = "dashed", size = 1, fill = "gray85", show.legend=FALSE)  +
+  geom_smooth(method = "lm", se = F , lty = "dashed", size = 1, fill = "gray", show.legend=FALSE)  +
   #geom_point(size = 2)+
   geom_jitter(width = 0.05, height = 0, size = 2)+
   scale_x_continuous(trans = "log10")+
   scale_y_continuous(limits = c(1, 1000), trans = "log10")+
+  scale_color_discrete(name = NULL,
+                       breaks = c("Salvelinus fontinalis", "Micropterus dolomieu"),
+                       labels = c("Salvelinus sp.", "Achigan à petite bouche"))+
+  scale_shape_discrete(name = NULL,
+                       breaks = c("Salvelinus fontinalis", "Micropterus dolomieu"),
+                       labels = c("Salvelinus sp.", "Achigan à petite bouche"))+
   labs(title= NULL, x ="Concentration d'ADN (ng/ul)", y = "N lectures") +                         
   #facet_grid(. ~ Species) +
   
  # guide_legend(title = "Espèce") +
-  theme_bw() + theme(legend.position = c(0.8, 0.1))
+  theme_bw() + theme(legend.position = c(0.75, 0.2))
 
 
 
@@ -1181,9 +1187,34 @@ CompPAtrad <- Sample.data %>% mutate(NameAssign = ifelse(NameAssign == "Salvelin
  left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
                          by = c("NameAssign" = "Espece_initial")) 
 
+# SImilar but with riv and pel
+
+CompPAtrad.data.fct <- function(data) {   
+data %>% mutate(NameAssign = ifelse(NameAssign == "Salvelinus", "Salvelinus fontinalis", NameAssign)) %>% 
+  filter(str_detect(Assign, "Teleostei"),
+         str_detect(NameAssign, " "),
+         str_detect(NameAssign, "Gadus morhua") == FALSE,
+         str_detect(NameAssign, "Salmo salar") == FALSE) %>% 
+  group_by(NameAssign, Location, NomLac, Method, Locus) %>% 
+  summarise(N = sum(N)) %>% 
+  mutate(PresenceADNe = ifelse(N >=1, 1, 0)) %>% 
+  full_join(LacInv1 %>% select(NomLac, Location, Espece, Presence),
+            by = c("NomLac" = "NomLac", "Location" = "Location", "NameAssign" = "Espece")) %>%
+  mutate(PresenceADNe = ifelse(is.na (PresenceADNe), 0, PresenceADNe),
+         DiffInv = ifelse(PresenceADNe == Presence, 
+                          ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
+                          ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul"))) %>% 
+  left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
+            by = c("NameAssign" = "Espece_initial"))
+
+ 
+}
+
+
 
   #group_by(Method, Locus, DiffInv) %>% summarise(N = length(NomLac)) %>% View()
   #View()
+
 CompPAtrad %>%   filter(Location == "Avant-pays",
          Method %in% c("ASV", NA),
          Locus %in% c("12s", NA)) %>% #View()
@@ -1191,8 +1222,11 @@ CompPAtrad %>%   filter(Location == "Avant-pays",
   geom_bin2d(col = "black") +
   labs(title= NULL, x ="Lac", y = "Assignation") +
   #scale_y_discrete(position = "right") +
-  scale_fill_manual(limits = c("Present trad et ADNe", "Present trad seul", "Present ADNe seul", "Absent trad et ADNe"),  
-                    values = c("green", "red", "yellow", "white")) + 
+  scale_fill_manual(limits = c("Present trad et ADNe",  "Absent trad et ADNe", "Present trad seul", "Present ADNe seul"),  
+                    values = c("green3", 
+                               "darkseagreen1", 
+                               "dodgerblue3", #"darkorange1", 
+                               "goldenrod1")) + 
   guides(fill = guide_legend(title = NULL)) + 
   theme_bw ()+
   facet_grid(Order + Family ~ ., 
@@ -1207,6 +1241,57 @@ CompPAtrad %>%   filter(Location == "Avant-pays",
         strip.background = element_rect(colour = "black", fill = "white"),
         axis.text.y = element_text(colour="black", hjust = 1)) #+ coord_flip()
 
+
+
+
+
+CompPAtrad.graph.fct <- function(data) {   
+    
+    data %>% filter(Location == "Avant-pays",
+                        Method %in% c("ASV", NA),
+                        Locus %in% c("12s", NA)) %>% #View()
+             ggplot(aes(x=NomLac, y = NomFR, fill = DiffInv)) +
+             geom_bin2d(col = "black") +
+             labs(title= NULL, x = NULL, y = NULL) +
+             #scale_y_discrete(position = "right") +
+             scale_fill_manual(limits = c("Present trad et ADNe",  "Absent trad et ADNe", "Present trad seul", "Present ADNe seul"),  
+                               values = c("green3", 
+                                          "darkseagreen1", 
+                                          "dodgerblue3", #"darkorange1", 
+                                          "goldenrod1"),
+                               na.value = "gray") + 
+             guides(fill = guide_legend(title = NULL)) + 
+             theme_bw ()+
+             facet_grid(Family ~ ., 
+                        scale = "free", space = "free", 
+                        labeller = label_value,
+                        switch = NULL) +
+             theme(axis.text.x = element_text(angle = 90, hjust = 1),
+                   axis.ticks.y = element_blank(),
+                   strip.text.y = element_text(angle = 0),
+                   panel.spacing = unit(0, "lines"),
+                   strip.placement = "outside",
+                   strip.background = element_rect(colour = "black", fill = "white"),
+                   axis.text.y = element_text(colour="black", hjust = 1),
+                   plot.margin=unit(c(30,10,10,10),"point"))
+            
+
+}
+
+`%nin%` = Negate(`%in%`)
+
+# The three graphes                     
+ggarrange(CompPAtrad.graph.fct(Sample.data %>% CompPAtrad.data.fct()),
+          ggarrange(CompPAtrad.graph.fct(Sample.data %>% filter(CatSite == "RIV") %>% CompPAtrad.data.fct()) + theme(legend.position="none"),
+                    CompPAtrad.graph.fct(Sample.data %>% filter(CatSite == "PEL") %>% CompPAtrad.data.fct() %>% filter(NomLac %nin% c("Berube", "Etienne", "Hamel Ouest"))) + theme(legend.position="none"),
+                    ncol =2, labels = c("B. Échantillons riverains", "C. Échantillons pélagiques"),  hjust = 0),
+          nrow=2, labels = "A. Tous les échantillons", hjust = 0 
+   )
+
+ CompPAtrad.fct(CompPAtrad.cat %>% filter(CatSite != "PEL"))
+CompPAtrad.fct(CompPAtrad.cat %>% filter(CatSite %in% c("RIV", NA)))
+
+CompPAtrad.cat %>% View()
 
 CompPAtrad %>% filter(NameAssign == "Salvelinus fontinalis",
                       Location == "Avant-pays") %>% 
