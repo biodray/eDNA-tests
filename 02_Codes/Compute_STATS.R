@@ -1035,19 +1035,21 @@ filter( str_detect(Assign, "Teleostei") == T,
   group_by(Species, Mix) %>% 
   summarise(Nhaplo = length(unique(ID))) %>% 
   ggplot(aes(x = Species, y = Nhaplo, fill = Mix)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  geom_hline(yintercept = 1, col = "black", linetype = 2) + 
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+         geom_bar(stat = "identity", position = "dodge") +
+         geom_hline(yintercept = 1, col = "black", linetype = 2) + 
+         scale_y_continuous(limits = c(0,8))+
+         theme_classic() +
+         theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 }
 
-ggarrange(
-haplo.mock(ASVtab.12s.byID.SP),
-haplo.mock(OTUtab.12s.byID.SP),
-haplo.mock(ASVtab.cytB.R1.byID.SP),
-haplo.mock(OTUtab.cytB.R2.byID.SP),
-ncol = 2, nrow = 2)
+
+
+ggarrange(haplo.mock(ASVtab.12s.byID.SP) + labs(title = "12s - ASV"),
+          haplo.mock(OTUtab.12s.byID.SP) + labs(title = "12s - OTU"),
+          #haplo.mock(ASVtab.cytB.R1.byID.SP),
+          #haplo.mock(OTUtab.cytB.R2.byID.SP),
+          ncol = 2, nrow = 1, common.legend = T, legend = "right")
 
 ls() %>% str_subset("byID.SP")
 
@@ -1079,17 +1081,15 @@ Summary.haplo %>% filter(Assign != "Root", Level > 2) %>%
 
 # Trying haplo by lac
 
-ASV.12s.SEQ <- data.frame(ID = OTUtab.12s$ID, SEQ = row.names(OTUtab.12s))
+ASV.12s.SEQ <- data.frame(ID = ASVtab.12s$ID, SEQ = row.names(ASVtab.12s))
 
-OTUtab.12s.cor.wTAXO %>% left_join(ASV.12s.SEQ) %>% 
+ASVtab.12s.wTAXO %>% left_join(ASV.12s.SEQ) %>% 
                          mutate(Assign = Assign %>% str_replace("Salvelinus", "Salvelinus;Salvelinus sp.")) %>% 
-  filter(str_detect(Assign, "Teleostei"),
-         str_detect(Assign, " "), 
-         str_detect(Assign, "Gadus morhua") == FALSE,
-         str_detect(Assign, "Salmo salar") == FALSE
-  ) %>%  
-  
-  
+                         filter(str_detect(Assign, "Teleostei"),
+                                str_detect(Assign, " "), 
+                                str_detect(Assign, "Gadus morhua") == FALSE,
+                                str_detect(Assign, "Salmo salar") == FALSE
+                                ) %>%  
                          mutate(Espece = sapply(str_split(Assign, ";"), `[`, 7)) %>% 
                          gather(names(.) %>% str_subset("Sample"), key = "Sample", value = N) %>% 
                          mutate(Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% 
@@ -1128,49 +1128,78 @@ OTUtab.12s.cor.wTAXO %>% left_join(ASV.12s.SEQ) %>%
                                )
   
 
-ASVtab.12s.cor.wTAXO %>% left_join(ASV.12s.SEQ) %>% 
-  filter(str_detect(Assign, "Culaea inconstan")) %>% 
+
+
+DATA <- ASVtab.12s.cor.wTAXO %>% left_join(ASV.12s.SEQ) %>% 
+  mutate(Assign = Assign %>% str_replace("Salvelinus", "Salvelinus;Salvelinus sp.")) %>% 
+  filter(str_detect(Assign, "Teleostei"),
+         str_detect(Assign, " "), 
+         str_detect(Assign, "Gadus morhua") == FALSE,
+         str_detect(Assign, "Salmo salar") == FALSE
+  ) %>%  
+  mutate(Espece = sapply(str_split(Assign, ";"), `[`, 7)) %>% 
   gather(names(.) %>% str_subset("Sample"), key = "Sample", value = N) %>% 
   mutate(Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% 
   left_join(DataSeq %>% select(IbisID, SeqType, NomLac), by = c("Puit" = "IbisID")) %>% 
   filter(SeqType == "sample") %>% 
-  group_by(NomLac, SEQ) %>% 
+  group_by(NomLac, SEQ, Espece) %>% 
   summarise(N = sum(N)) %>%
-  mutate(N = ifelse(N == 0, NA, N)) %>% 
-  #filter(N >=1) %>% 
-  #group_by(SEQ) %>% 
-  #summarise(Nlac = length(unique(NomLac)),
-  #         Nreads = sum(N))
-  #spread(SEQ, N) %>%
-  left_join(LacSample %>% select(NomLac, Rotenode, Affluent, Effluent, Bassin, SousBassin, Ordre, Volume),
-            by = "NomLac") %>% 
-  mutate(NewBassin = ifelse(Bassin == "Isae", paste(Bassin,SousBassin,sep=":"), Bassin),
-         NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Wapizagonke", "Aticagamac", "Cinq", "Cauche", "Theode", "St-Maurice", "Mattawin", "Isolé")),
-         NewNomLac = ifelse(is.na(Affluent), paste(NomLac, "*"), NomLac)) %>% 
-  arrange(NewBassin, Ordre) %>% 
-  ggplot(aes(x = NewNomLac, y = SEQ, fill = N))+
-  geom_bin2d(col = "darkgray") + 
-  scale_fill_distiller(palette = "Spectral", trans = "log10",  na.value = "white", limits= c(1,NA)) +
-  scale_y_discrete(labels = c(paste0("ASV",1:10))) +
-  labs(title = "Épinoche" ) +
-  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
-  theme_bw ()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, aes(size = 1/Volume/10000000)),
-        axis.ticks = element_blank(),
-        strip.text.y = element_text(angle = 0),
-        strip.text.x = element_text(angle = 90),
-        panel.spacing.x = unit(0, "lines"),
-        strip.placement = "outside",
-        strip.background = element_rect(colour = "black", fill = "white"),
-        axis.text.y = element_text(colour="black", hjust = 1),
-        legend.box.just = "left"
-  )
-
-
+ # mutate(N = ifelse(N == 0, NA, N)) %>% 
+  filter(Espece == "Micropterus dolomieu",
+         N >= 1) 
   
+library(Biostrings)
+
+DNA <- DNAStringSet(DATA$SEQ)
+names(DNA) <- DATA$NomLac
+
+DNA2 <- as.DNAbin(DNA)
+
+library(ape)
+
+DNA.dist <- dist.dna(DNA2)
+DNA.dist
+
+library(pegas)
+
+HAPLO <- pegas::haplotype(DNA2)
+
+HAPLO <- sort(HAPLO, what = "label")
+str(HAPLO)
+
+(net <- pegas::haploNet(HAPLO))
+
+ind.hap<-with(
+  stack(setNames(attr(HAPLO, "index"), rownames(HAPLO))),
+  table(hap=ind, individuals=names(DNA)[values])
+)
 
 
-ASV.12s.SEQ %>% View()
+
+par(mar=c(3,3,2,10))
+plot(net, size=c(1,4), scale.ratio=1, pie=ind.hap, show.mutation = 2, labels = FALSE,  main = "Salvelinus network")
+legend(0, -3, colnames(ind.hap), col=rainbow(ncol(ind.hap)), pch=19, ncol=4, xjust = 0.5, yjust = 1)
+
+attr(net, "freq")
+
+par(mar=c(10,3,5,3))
+plot(net, size=1 , scale.ratio=1, pie=ind.hap, show.mutation = 1, labels = TRUE,  main = "Ameiurus")
+legend(0, -2.5, colnames(ind.hap), col=rainbow(ncol(ind.hap)), pch=19, ncol=4, xjust = 0.5, yjust = 1)
+
+
+par(mar=c(10,3,5,3))
+plot(net, size=1 , scale.ratio=1, pie=ind.hap, show.mutation = 1, labels = TRUE,  main = "Semotilus")
+legend(0, -2.5, colnames(ind.hap), col=rainbow(ncol(ind.hap)), pch=19, ncol=4, xjust = 0.5, yjust = 1)
+
+par(mar=c(10,3,5,3))
+plot(net, size=1 , scale.ratio=1, pie=ind.hap, show.mutation = 1, labels = TRUE,  main = "Perca")
+legend(0, -2.5, colnames(ind.hap), col=rainbow(ncol(ind.hap)), pch=19, ncol=4, xjust = 0.5, yjust = 1)
+
+par(mar=c(10,3,5,3))
+plot(net, size=1 , scale.ratio=1, pie=ind.hap, show.mutation = 1, labels = TRUE,  main = "Micropterus")
+legend(0, -2.5, colnames(ind.hap), col=rainbow(ncol(ind.hap)), pch=19, ncol=4, xjust = 0.5, yjust = 1)
+
+
 
 
 # Samples -----------------------------------------------------------------
@@ -1343,7 +1372,7 @@ CompPAtrad.red <- bind_rows(CompPAtrad %>% filter(Method %in% c("ASV", NA),
                                    Ncor0 = ifelse(Ncor == 0, NA, Ncor),
                                    DiffInv = ifelse((NomFR == "Salvelinus sp." & DiffInv == "Present trad seul") == T, "Present trad seul*", DiffInv))
 
-str(CompPAtrad)
+str(CompPAtrad.red)
 #CompPAtrad.red %>% View()
 
 # 
@@ -1389,54 +1418,54 @@ str(CompPAtrad)
 
   #group_by(Method, Locus, DiffInv) %>% summarise(N = length(NomLac)) %>% View()
   #View()
-
-bind_rows(CompPAtrad %>% filter(Method %in% c("ASV", NA),
-                                Locus %in% c("12s", NA),
-                                NomFR != "Omble de fontaine"),
-          CompPAtrad %>% filter(Method == "ASV",
-                                Locus == "cytB.R1",
-                                NomFR == "Omble de fontaine")# %>% View()
-          ) %>%  
-  mutate(NomFR = ifelse(NomFR == "Omble de fontaine", paste(NomFR, "*"), NomFR),
-         NomFR = factor(NomFR, levels = rev(c("Omble de fontaine *", "Omble chevalier", "Touladi", "Salvelinus sp.", 
-                                          "Meunier noir",
-                                          "Épinoche à cinq épines", "Épinoche à neuf épines",
-                                          "Mulet à cornes", "Mulet perlé", "Tête-de-boule", "Ventre rouge du nord", "Méné à nageoires rouges", "Méné jaune", "Museau noir", "Naseux des rapides", "Ouitouche",
-                                          "Chabot à tête plate",
-                                          "Fondule barré",
-                                          "Éperlan arc-en-ciel",
-                                          "Achigan à petite bouche", "Crapet de roche", "Crapet-soleil",
-                                          "Barbotte brune", 
-                                          "Perchaude", "Doré jaune", "Fouille-roche zébré",
-                                          "Grand brochet")
-         ))) %>% 
-  filter(Location == "Avant-pays") %>% 
-         #Method %in% c("ASV", NA),
-         #Locus %in% c("12s", NA)) %>%# View()
-  ggplot(aes(x=NewNomLac, y = NomFR, fill = DiffInv)) +
-  geom_bin2d(col = "black") +
-  labs(title= NULL, x =NULL, y = NULL) +
-  #scale_y_discrete(position = "right") +
-  scale_fill_manual(limits = c("Present trad et ADNe",  "Absent trad et ADNe", "Present trad seul", "Present ADNe seul"),  
-                    values = c("green3", 
-                               "darkseagreen1", 
-                               "dodgerblue3", #"darkorange1", 
-                               "goldenrod1")) + 
-  guides(fill = guide_legend(title = NULL)) + 
-  theme_bw ()+
-  facet_grid(Family ~ NewBassin, 
-             scale = "free", space = "free", 
-             labeller = label_value,
-             switch = NULL) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5 ),
-        axis.ticks = element_blank(),
-        strip.text.y = element_text(angle = 0),
-        strip.text.x = element_text(angle = 90),
-        panel.spacing = unit(0, "lines"),
-        strip.placement = "outside",
-        strip.background = element_rect(colour = "black", fill = "white"),
-        axis.text.y = element_text(colour="black", hjust = 1)
-        ) #+ coord_flip()
+# 
+# bind_rows(CompPAtrad %>% filter(Method %in% c("ASV", NA),
+#                                 Locus %in% c("12s", NA),
+#                                 NomFR != "Omble de fontaine"),
+#           CompPAtrad %>% filter(Method == "ASV",
+#                                 Locus == "cytB.R1",
+#                                 NomFR == "Omble de fontaine")# %>% View()
+#           ) %>%  
+#   mutate(NomFR = ifelse(NomFR == "Omble de fontaine", paste(NomFR, "*"), NomFR),
+#          NomFR = factor(NomFR, levels = rev(c("Omble de fontaine *", "Omble chevalier", "Touladi", "Salvelinus sp.", 
+#                                           "Meunier noir",
+#                                           "Épinoche à cinq épines", "Épinoche à neuf épines",
+#                                           "Mulet à cornes", "Mulet perlé", "Tête-de-boule", "Ventre rouge du nord", "Méné à nageoires rouges", "Méné jaune", "Museau noir", "Naseux des rapides", "Ouitouche",
+#                                           "Chabot à tête plate",
+#                                           "Fondule barré",
+#                                           "Éperlan arc-en-ciel",
+#                                           "Achigan à petite bouche", "Crapet de roche", "Crapet-soleil",
+#                                           "Barbotte brune", 
+#                                           "Perchaude", "Doré jaune", "Fouille-roche zébré",
+#                                           "Grand brochet")
+#          ))) %>% 
+#   filter(Location == "Avant-pays") %>% 
+#          #Method %in% c("ASV", NA),
+#          #Locus %in% c("12s", NA)) %>%# View()
+#   ggplot(aes(x=NewNomLac, y = NomFR, fill = DiffInv)) +
+#   geom_bin2d(col = "black") +
+#   labs(title= NULL, x =NULL, y = NULL) +
+#   #scale_y_discrete(position = "right") +
+#   scale_fill_manual(limits = c("Present trad et ADNe",  "Absent trad et ADNe", "Present trad seul", "Present ADNe seul"),  
+#                     values = c("green3", 
+#                                "darkseagreen1", 
+#                                "dodgerblue3", #"darkorange1", 
+#                                "goldenrod1")) + 
+#   guides(fill = guide_legend(title = NULL)) + 
+#   theme_bw ()+
+#   facet_grid(Family ~ NewBassin, 
+#              scale = "free", space = "free", 
+#              labeller = label_value,
+#              switch = NULL) +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5 ),
+#         axis.ticks = element_blank(),
+#         strip.text.y = element_text(angle = 0),
+#         strip.text.x = element_text(angle = 90),
+#         panel.spacing = unit(0, "lines"),
+#         strip.placement = "outside",
+#         strip.background = element_rect(colour = "black", fill = "white"),
+#         axis.text.y = element_text(colour="black", hjust = 1)
+#         ) #+ coord_flip()
 
 # Try something
 
@@ -1514,6 +1543,28 @@ B <- CompPAtrad.red  %>%
 ggarrange(A + theme(axis.text.x = element_blank()),
           B + theme(strip.text = element_blank()), 
           nrow=2, align = "v", heights = c(3,1))
+
+
+
+# Model
+
+DATA <- CompPAtrad %>% filter(Method %in% c("ASV"),
+                      Locus %in% c("12s"),
+                      Location == "Avant-pays") %>%
+                  mutate(DiffInv01 = ifelse(DiffInv %in% c("Absent trad et ADNe", "Present trad et ADNe"), 1,
+                                            ifelse(DiffInv %in% c("Present ADNe seul", "Present trad seul"),0,NA)),
+                         NameAssign = factor(NameAssign),
+                         Vol.std = scale(Volume)) 
+
+library(lme4)
+library(effects)
+
+m1 <- glmer(DiffInv01 ~ NameAssign + Vol.std + (1|NomLac), family = "binomial", data = DATA)
+
+plot(allEffects(m1))
+
+summary(m1)
+DATA$NomFR %>% unique()
 
 
 # TO do the same but with PEL vs RIV
