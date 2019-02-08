@@ -1559,6 +1559,8 @@ DATA <- CompPAtrad %>% filter(Method %in% c("ASV"),
 library(lme4)
 library(effects)
 
+sum(DATA$DiffInv01) / nrow(DATA)
+
 m1 <- glmer(DiffInv01 ~ NameAssign + Vol.std + (1|NomLac), family = "binomial", data = DATA)
 
 plot(allEffects(m1))
