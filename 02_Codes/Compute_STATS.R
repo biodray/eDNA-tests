@@ -1548,26 +1548,168 @@ ggarrange(A + theme(axis.text.x = element_blank()),
 
 # Model
 
-DATA <- CompPAtrad %>% filter(Method %in% c("ASV"),
-                      Locus %in% c("12s"),
-                      Location == "Avant-pays") %>%
-                  mutate(DiffInv01 = ifelse(DiffInv %in% c("Absent trad et ADNe", "Present trad et ADNe"), 1,
-                                            ifelse(DiffInv %in% c("Present ADNe seul", "Present trad seul"),0,NA)),
-                         NameAssign = factor(NameAssign),
-                         Vol.std = scale(Volume)) 
+DATA.int <- Sample.data %>% select(Assign, Sample, N, NameAssign, Method, Locus) %>% 
+            # Correct the number of observed reads
+            mutate(NameAssign = ifelse(NameAssign == "Salvelinus", "Salvelinus sp.", NameAssign)) %>% 
+            filter(str_detect(Assign, "Teleostei"),
+                   str_detect(NameAssign, " "), 
+                   str_detect(NameAssign, "Gadus morhua") == FALSE,
+                   str_detect(NameAssign, "Salmo salar") == FALSE,
+                   Locus == "12s"
+            ) %>% 
+            select(-Assign) %>% 
+            complete(NameAssign, Sample, Method) %>% 
+            mutate(N = ifelse(is.na(N), 0, N),
+                   PresenceADNe = ifelse(N > 0, 1, 0),
+                   Locus = sapply(str_split(Sample, "_"), `[`, 1),
+                   Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% #View()
+            left_join(DataSeq %>% select(IbisID, Nsite, CatSite, SeqType, NomLac, CorrFiltre, Volume), by = c("Puit" = "IbisID")) %>% 
+            left_join(LacInv1 %>% select(NomLac, Location, Espece, Presence),
+                      by = c("NomLac" = "NomLac", "NameAssign" = "Espece")) %>% 
+            mutate(PresenceADNe = ifelse(is.na (PresenceADNe), 0, PresenceADNe),
+                   DiffInv = ifelse(PresenceADNe == Presence, 
+                                    ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
+                                    ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul"))) %>% 
+            left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
+                      by = c("NameAssign" = "Espece_initial")) %>% 
+            left_join(LacSample %>% select(NomLac, Rotenode, Affluent, Effluent, Bassin, SousBassin, Ordre, Volume),
+                      by = "NomLac") %>% 
+            mutate(NewBassin = ifelse(Bassin == "Isae", paste(Bassin,SousBassin,sep=":"), Bassin),
+                   NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Wapizagonke", "Aticagamac", "Cinq", "Cauche", "Theode", "St-Maurice", "Mattawin", "Isolé")),
+                   NewNomLac = ifelse(is.na(Affluent), paste(NomLac, "*"), NomLac)) %>% 
+            arrange(NewBassin, Ordre) %>% 
+            mutate(NewNomLac = factor(NewNomLac, levels = unique(NewNomLac)), 
+                   Family = factor(Family, levels = c("Salmonidae", "Cyprinidae", "Catostomidae", "Gasterosteidae", "Cottidae", "Fundulidae", "Osmeridae", "Centrarchidae", "Ictaluridae", "Percidae", "Esocidae"))
+            )
+    
+DATA <- DATA.int %>% filter(Method %in% c("ASV"),
+                            Location == "Avant-pays",
+                            NomFR != "Omble de fontaine",
+                            SeqType == "sample") %>% 
+                     mutate(DiffInv01 = ifelse(DiffInv %in% c("Absent trad et ADNe", "Present trad et ADNe"), 1,
+                                        ifelse(DiffInv %in% c("Present ADNe seul", "Present trad seul"),0,NA)),
+                            CompTrad =  ifelse(DiffInv %in% c("Present trad et ADNe"), 1,
+                                               ifelse(DiffInv %in% c("Present trad seul"),0,NA)), 
+                            PresenceADNe = factor(PresenceADNe),
+                            NameAssign = factor(NameAssign),
+                            Bassin = factor(Bassin),
+                            CatSite = factor(CatSite),
+                            VolSample.std = scale(Volume.x),
+                            CorrFiltre.std = scale(CorrFiltre),
+                            VolLac.std = scale(Volume.y)) 
+
+DATA$NomFR %>% unique()
 
 library(lme4)
 library(effects)
 
-sum(DATA$DiffInv01) / nrow(DATA)
+names(DATA)
 
-m1 <- glmer(DiffInv01 ~ NameAssign + Vol.std + (1|NomLac), family = "binomial", data = DATA)
+DATA$NomLac %>% unique()
+
+sum(DATA$DiffInv01) / nrow(DATA)
+sum(DATA2$DiffInv01) / nrow(DATA)
+
+m1 <- glmer(DiffInv01 ~ NameAssign + 
+                        VolSample.std + CorrFiltre.std + 
+                        CatSite + VolLac.std + Bassin +
+                        #CatSite:VolSample.std +  
+                        #NameAssign:CatSite +
+                        #NameAssign:Bassin+
+                  
+                         (1|NomLac) + (1|Sample), 
+            family = "binomial", 
+            control=glmerControl(optimizer="bobyqa"),
+            data = DATA)
+
+m2 <- glmer(DiffInv01 ~ NameAssign + 
+              VolSample.std + 
+              VolLac.std + Bassin +
+              #CatSite:VolSample.std +  
+              #NameAssign:CatSite +
+              #NameAssign:Bassin+
+              
+              (1|NomLac) + (1|Sample), 
+            family = "binomial", 
+            control=glmerControl(optimizer="bobyqa"),
+            data = DATA)
+
+summary(m2)
+
+plot(allEffects(m2))
+
+# Maintenant en regroupant les lacs
+
+DATA2 <- DATA %>% group_by(NomLac, NameAssign, VolLac.std, Bassin, Presence) %>% 
+                   summarise(Nsample = length(unique(Sample)),
+                             Npel = length(unique(Sample[CatSite == "PEL"])),
+                             Nriv = length(unique(Sample[CatSite == "RIV"])),
+                             Nread = sum(N),
+                             Nsample1 = length(unique(Sample[N>=1])),
+                             #VolSample.std = sum(VolSample.std),
+                             #CorrFiltre.std = sum(CorrFiltre.std),
+                             PresenceADNe = sum(as.numeric(as.character(PresenceADNe)))
+                             )    %>% 
+group_by() %>% 
+    mutate(PresenceADNe = ifelse(PresenceADNe >=1, 1 ,0),
+         DiffInv = ifelse(PresenceADNe == Presence, 
+                          ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
+                          ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul")),
+         DiffInv01 = ifelse(DiffInv %in% c("Absent trad et ADNe", "Present trad et ADNe"), 1,
+                            ifelse(DiffInv %in% c("Present ADNe seul", "Present trad seul"),0,NA)),
+                             
+         VolLac.std = as.numeric(VolLac.std))  %>% as.data.frame()
+
+str(DATA2)  
+        
+m1 <- glmer(DiffInv01 ~ NameAssign + 
+              #CorrFiltre.std + 
+              #VolLac.std + 
+              Bassin +
+              #Nsample + 
+              #Nsample:VolLac.std +
+              #CatSite:VolSample.std +  
+              #NameAssign:CatSite +
+              #NameAssign:Bassin+
+              #Nsample +
+              #NameAssign:Nsample +
+              (1|NomLac), 
+            family = "binomial", 
+            control=glmerControl(optimizer="bobyqa"),
+            data = DATA2)
+
+
+summary(m1)
 
 plot(allEffects(m1))
 
-summary(m1)
-DATA$NomFR %>% unique()
+res <- vector()
 
+for(x in 1:50000){
+ 
+  
+val <- DATA2 %>% #filter(DiffInv = "Absent trad et ADNe") %>% 
+                 mutate(PresenceADNe = ifelse(Nread >= x, 1, 0),
+                 DiffInv = ifelse(PresenceADNe == Presence, 
+                                  ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
+                                  ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul")),
+                 DiffInv01 = ifelse(DiffInv %in% c("Absent trad et ADNe", "Present trad et ADNe"), 1,
+                                    ifelse(DiffInv %in% c("Present ADNe seul", "Present trad seul"),0,NA))) %>% 
+                summarise(voila = sum(DiffInv01)) %>% pull()
+                          
+  
+#val <- DATA2 %>% filter(Nsample1 >= x) %>% 
+#                 pull(DiffInv01) %>% sum() 
+
+res[x] <- val / nrow(DATA2)
+
+}
+
+plot(y= res[1:15000], x=1:15000, type = "l", xlab= "N min reads", ylab = "% concordance trad / ADNe")
+
+
+
+sum(DATA2$DiffInv01) / nrow(DATA2)
 
 # TO do the same but with PEL vs RIV
 
