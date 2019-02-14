@@ -60,6 +60,10 @@ LacInv2 <- LacInv2 %>% gather(names(.) %>% str_subset(" "), key = Espece, value 
 LacInv2 %>% spread(key = Mesure, value = Value) %>%  ggplot(aes(x = CPUE, y = BPUE, col = Espece, shape = Peche))+ geom_point(size = 2) +theme_classic() + facet_wrap(~Espece)
 
 
+LacInv2 <- LacInv2 %>% left_join(LacSample %>% select(NomLac, Surface, Volume)) %>% 
+                       mutate(Density.s = Value / Surface,
+                              Density.v = Value / Volume)
+
 LacPeche <- read_excel(get.value("Lac.xl"),sheet="StatPeche",na="NA",guess_max=100000)
 LacPeche <- LacPeche %>% gather(names(.) %>% str_subset("PUE"), key = "Mesure", value = "Value") 
 
@@ -1710,6 +1714,45 @@ plot(y= res[1:15000], x=1:15000, type = "l", xlab= "N min reads", ylab = "% conc
 
 
 sum(DATA2$DiffInv01) / nrow(DATA2)
+
+# Trying to model with density
+
+DATA3 <- DATA %>% filter(NomLac %in% LacInv2$NomLac,
+                          NameAssign %in% LacInv2$Espece,
+                          NameAssign %nin% c("Luxilus cornutus", "Margariscus margarita")
+                          ) %>% 
+                   left_join(LacInv2 %>% filter(Peche == "Verveux", Mesure == "CPUE") %>% 
+                                         select(NomLac, Value, Density.s), by = "NomLac") %>% 
+  mutate( NameAssign = factor(NameAssign),
+          Bassin = factor(Bassin),
+          CatSite = factor(CatSite),
+          VolSample.std = scale(Volume.x),
+          CorrFiltre.std = scale(CorrFiltre),
+          VolLac.std = scale(Volume.y),
+          Density.s.std = scale(Density.s),
+          CPUE.std = scale(Value)) #%>% pull(NameAssign) %>% unique()
+
+
+
+m1 <- glmer(PresenceADNe ~ NameAssign +
+            #VolLac.std +# CPUE.std +
+              Density.s.std +
+              Density.s.std:NameAssign +
+              #NameAssign:CPUE.std +
+              #CatSite:VolSample.std +  
+              #NameAssign:CatSite +
+              #NameAssign:Bassin+
+              
+              (1|NomLac) + (1|Sample), 
+            family = "binomial", 
+            control=glmerControl(optimizer="bobyqa"),
+            data = DATA3)
+
+
+summary(m1)
+
+plot(allEffects(m1))
+
 
 # TO do the same but with PEL vs RIV
 
