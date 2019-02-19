@@ -5,15 +5,11 @@ This code purpose is to analysis eDNA data. It was build for the analysis of fre
 
 ## Folder
 
-**00_Data** for raw and proceeded data
-
-**01_Results** for all results 
-
-**02_Codes** central codes
-
-**03_Functions** useful functions necessary in more than one code
-
-**04_log** log created by running codes
+- **00_Data** for raw and proceeded data
+- **01_Results** for all results 
+- **02_Codes** central codes
+- **03_Functions** useful functions necessary in more than one code
+- **04_log** log created by running codes
 
 
 ## Pipelines
@@ -41,11 +37,12 @@ Run sequentially these codes:
 
 ## Stuff to do eventually
 
-- enable doing more analysis under windows (enable local dir for external program)
+- Enable doing more analysis under windows (enable local dir for external program)
 - Remove yes/no question in Process_RAW.R
 - Add more info in Process_RAW.R log file
 - Add more log files (within each code)
 - Create local metadata, in a more universal version
+- Create a RMD document compiling raw infos + majors results
 
 
 
