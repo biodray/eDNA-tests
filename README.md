@@ -1,6 +1,6 @@
 # My first eDNA pipeline
 
-This code purpose is to analysis eDNA data. It was build for the analysis of freshwater fish, at two loci, 12S and cytB. This code run in R, but need external program such as FastQC (), cutadapt (), usearch () and vsearch ().
+This code purpose is to analysis eDNA data. It was build for the analysis of freshwater fish, at two loci, 12S and cytB. This code run in R, but need external programs such as FastQC (), cutadapt (), usearch () and vsearch ().
 
 
 ## Folder
@@ -22,26 +22,22 @@ This code purpose is to analysis eDNA data. It was build for the analysis of fre
 
 - Put raw read files in 00_Data/01a_RawData
 - Put metadata in 00_Data/00_FileInfos
-
-**Change_PARAM.R** to modify repertories and files names
-
-**Rename_RAW.R** to unzip fastq files and rename them
-
-**Create_REF.R** to create a reference dataset for species assignment
+- Use **Change_PARAM.R** to modify repertories and files names
+- Use **Rename_RAW.R** to unzip fastq files and rename them
+- Use **Create_REF.R** to create a reference dataset for species assignment
 
 ### Pipelines
 
-**Process_RAW.R** to transform raw reads into ASV and OTU tables. Must run in UNIX.
+Run sequentially these codes:
 
-**Correct_SEQTAB.R** to correct read numbers based on negative samples
-
-**Assign_SP.R** to assign taxonomy to ASV/OTU tables
-
-**Compare_RESULTS.R** to create graphes and models based on ASV/OTU tables
+1. **Process_RAW.R** to transform raw reads into ASV and OTU tables. Must run in UNIX.
+2. **Correct_SEQTAB.R** to correct read numbers based on negative samples
+3. **Assign_SP.R** to assign taxonomy to ASV/OTU tables
+4. **Compare_RESULTS.R** to create graphes and models based on ASV/OTU tables
 
 ## Other stuffs
 
-**Blast.R** to use NCBI blast program on a locale reference dataset. Useful to double-check species assignation.
+- Use **Blast.R** to use NCBI blast program on a locale reference dataset. Useful to double-check species assignation.
 
 ## Stuff to do eventually
 
