@@ -288,6 +288,41 @@ REF$All <- "All"
 REF <- REF %>% left_join(SP.QC, by = "Espece")
 
 
+# Sequence Labo -----------------------------------------------------------
+
+lab.list <- list.files(file.path(get.value("ref.path"),"LabSeq"), pattern = "Contig")
+
+cat(file = file.path(get.value("ref.path"),"LabSeq", "LabSeq.fasta"), sep = "", fill = FALSE, labels = NULL,
+    append = FALSE)
+
+SP.abbrev <- data.frame(Abb = c("SEAT", "CACO", "CUIN", "ICNE", "MAMA", "MIDO", "PHEO", "PIPR"),
+                        SP = c("Semotilus atromaculatus",
+                               "Catostomus commersonii",
+                               "Culaea inconstans",
+                               "Ameiurus nebulosus",
+                               "Margariscus margarita",
+                               "Micropterus dolomieu",
+                               "Chrosomus eos",
+                               "Pimephales promelas"))
+
+
+SP.abbrev
+
+for(x in lab.list){
+  
+  ID <- x %>% str_remove("Contig\\[") %>% str_remove("_12S].TXT")
+  
+  SEQ.NAME <- paste0(">", ID, " ", SP.abbrev %>% filter(Abb == str_sub(ID,1,4)) %>% pull(SP))
+  
+  DATA <- str_flatten(readLines(file.path(get.value("ref.path"),"LabSeq", x)))
+  
+ cat(SEQ.NAME, DATA, sep="\n",
+    file = file.path(get.value("ref.path"),"LabSeq", "LabSeq.fasta"), 
+    append = TRUE) 
+  
+}
+
+
 # References --------------------------------------------------------------
 
 # Paramètre de ce que je veux faire
@@ -381,12 +416,14 @@ subset.files <- list.files(get.value("ref.path"), pattern = "QC_", full.names=T)
 subset.files
 
 # Then, select in my subset the ones that I want to keep
+# and add lab seq - NOT
+  #DNAlab <- readDNAStringSet(file.path(get.value("ref.path"),"LabSeq", "LabSeq.fasta"))
 
 for(x in 1:length(complete.files)){
 
   DNAsub <- readDNAStringSet(subset.files[x])
   DNAcom <- readDNAStringSet(complete.files[x])
-  
+
   # a Few name change because MEGA change my names ...
   names(DNAcom) <- names(DNAcom) %>% str_replace_all("_", " ") %>% str_remove_all(",") %>% str_replace("NC ", "NC_")
   names(DNAsub) <- names(DNAsub) %>% str_replace_all("_", " ") %>% str_remove_all(",") %>% str_replace("NC ", "NC_")
@@ -399,14 +436,30 @@ for(x in 1:length(complete.files)){
   print(length(new.sub))
   
   writeXStringSet(DNAcom, complete.files[x])
-  writeXStringSet(DNAsub[new.sub], subset.files[x] %>% str_replace(".fasta", "_complete.fasta"))
+  writeXStringSet(DNAcom[new.sub], subset.files[x] %>% str_replace(".fasta", "_complete.fasta"))
 
 }
 
-# Now its time to changes my files as in my previous loop
-
+# Remove gaps
+  
 complete.files <- list.files(get.value("ref.path"), pattern = "complete.fasta", full.names=T) #%>% str_subset("complete.fasta")
 complete.files
+  
+library(DECIPHER)
+  
+for(x in complete.files){
+  
+  DNA <- readDNAStringSet(x)
+  
+  DNA  <- RemoveGaps(DNA,
+             removeGaps = "all",
+             processors = 1)
+   
+  writeXStringSet(DNA, x) 
+}
+
+
+# Now its time to changes my files as in my previous loop
 
 SEQ.INFO <- list() # to keep info on duplicated
 
@@ -438,15 +491,15 @@ SEQ.INFO[[1]]$refdup
 
 SEQ.INFO[[1]]$addSeq <- c("KM267716.1 Ichthyomyzon fossor",
                           "KP013103.1 Acipenser oxyrinchus",
-                          "AF038493.1 Chrosomus neogaeus",
+                         #"AF038493.1 Chrosomus neogaeus", # Enlever car pas de C. neogaeus dans PC
                           
-                          "AP012101.1 Pimephales notatus",
-                          "NC_037014.1 Notropis hudsonius",
-                          "AY216538.1 Hybognathus regius",
+                          #"AP012101.1 Pimephales notatus", # Enlever car pas de P. notatus dans PC
+                          #"NC_037014.1 Notropis hudsonius",
+                          #"AY216538.1 Hybognathus regius",
                           
                           "KP281293.1 Hypomesus olidus",
                           "JQ390060.1 Coregonus clupeaformis",
-                          "MF621767.1 Prosopium cylindraceum",
+                          #"MF621767.1 Prosopium cylindraceum",
                           
                           "MF621737.1 Salvelinus fontinalis",
                           "MF621744.1 Salvelinus namaycush",
@@ -454,22 +507,22 @@ SEQ.INFO[[1]]$addSeq <- c("KM267716.1 Ichthyomyzon fossor",
                           
                           "AP009132.1 Alosa pseudoharengus",
                           "HQ331537.1 Alosa sapidissima",
-                          "KX686083.1 Brevoortia tyrannus",
+                          #"KX686083.1 Brevoortia tyrannus",
                           
                           "KX929880.1 Anarhichas denticulatus",
-                          "MH377821.1 Myoxocephalus scorpius",
-                          "KT004432.1 Icelus spatula",
+                          #"MH377821.1 Myoxocephalus scorpius",
+                          #"KT004432.1 Icelus spatula",
                           
                           "DQ356939.1 Gadus morhua",
                           "DQ356940.1 Gadus ogac",
-                          "AM489717.1 Melanogrammus aeglefinus",
+                          #"AM489717.1 Melanogrammus aeglefinus",
                           
                           "KX929917.1 Sebastes mentella",
                           "KX929918.1 Sebastes norvegicus",
-                          "KT723026.1 Ammodytes dubius",
+                          "KT723026.1 Ammodytes dubius"
                           
-                          "EF100182.1 Rajella fyllae",
-                          "KF597303.1 Cetorhinus maximus"
+                          #"EF100182.1 Rajella fyllae",
+                          #"KF597303.1 Cetorhinus maximus"
                           ) 
 
 
@@ -480,7 +533,7 @@ SEQ.INFO[[2]]$addSeq <- c("DQ678452.1 Sebastes norvegicus"
 
 keep_dissimilar(capply(SEQ.INFO[[3]]$refdup, FUN=keep_sp))$Duplicate
 SEQ.INFO[[3]]$refdup
-SEQ.INFO[[3]]$addSeq <- c("AF038493.1 Chrosomus neogaeus",
+SEQ.INFO[[3]]$addSeq <- c(#"AF038493.1 Chrosomus neogaeus",
                           "HQ331537.1 Alosa sapidissima",
                           "MF621737.1 Salvelinus fontinalis",
                           
@@ -490,13 +543,13 @@ SEQ.INFO[[3]]$addSeq <- c("AF038493.1 Chrosomus neogaeus",
                           
                           "MF621744.1 Salvelinus namaycush",
                           "MF621766.1 Coregonus artedi",
-                          "MF621767.1 Prosopium cylindraceum",
+                          #"MF621767.1 Prosopium cylindraceum",
 
-                          "MG570409.1 Notropis bifrenatus",
-                          "MG570414.1 Notropis heterolepis",
-                          "MG570463.1 Alosa aestivalis",
+                          #"MG570409.1 Notropis bifrenatus",
+                          #"MG570414.1 Notropis heterolepis",
+                          "MG570463.1 Alosa aestivalis"
                           
-                          "NC_037014.1 Notropis hudsonius"
+                          #"NC_037014.1 Notropis hudsonius"
                           ) 
 
 

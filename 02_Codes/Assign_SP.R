@@ -92,15 +92,15 @@ RDP <- function(seqtab, REF.TAXO, REF.SP){
                 
                 taxo <- assignTaxonomy(seqtab, REF.TAXO, 
                         taxLevels = c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species_80"), 
-                        minBoot=80, tryRC = TRUE)
+                        minBoot=50, tryRC = TRUE)
   
-                taxowSP <-  addSpecies(taxo, REF.SP, tryRC = TRUE)
+                taxowSP <-  addSpecies(taxo, REF.SP, allowMultiple = T, tryRC = TRUE)
   
-                for(x in 1:nrow(taxowSP)){
+                #for(x in 1:nrow(taxowSP)){
                   
-                  taxowSP[x,"Species"] <- ifelse(!is.na(taxowSP[x, "Genus"])  & !is.na(taxowSP[x, "Species"]), paste(taxowSP[x, "Genus"], taxowSP[x, "Species"]), NA)
+                #  taxowSP[x,"Species"] <- ifelse(!is.na(taxowSP[x, "Genus"])  & !is.na(taxowSP[x, "Species"]), paste(taxowSP[x, "Genus"], taxowSP[x, "Species"]), NA)
 
-                } 
+                #} 
                 
                 return(taxowSP)
 }
@@ -108,6 +108,7 @@ RDP <- function(seqtab, REF.TAXO, REF.SP){
 
 taxoTAB <- list()
 
+# DO the assignation
 
 for(x in 1:nrow(PARAM)){
   
@@ -130,6 +131,8 @@ for(x in 1:nrow(PARAM)){
 }
 
 names(taxoTAB)
+
+View(taxoTAB[[1]])
 
 # IDTAXA ------------------------------------------------------------------
 
@@ -180,26 +183,6 @@ plot(TS.ls[["QC.12s"]])
 plot(TS.ls[["QC.cytB.R1"]])
 plot(TS.ls[["QC.cytB.R2"]])
 
-
-# # Manually add ranks
-# add.rank.TS <- function(TS){
-# 
-#   ranks <- c("Root", "Class", "Order", "Family", "Genus", "Species") # ranks of interest
-#   
-#   add.rank <- vector()
-# 
-#   for(x in 1:length(TS[["taxonomy"]])){
-#     
-#     N <- str_count( TS[["taxonomy"]][x], pattern = ";")
-#   
-#     add.rank <- c(add.rank, ranks[N])
-# 
-#   }
-# 
-#   TS[["rank"]] <- add.rank
-# 
-#   return(TS)
-# }
 
 # Idtaxa on all data set
 
@@ -274,7 +257,7 @@ for(x in 1:nrow(PARAM)){
 names(taxoTAB)
 names(taxoTAB.IDT)
 
-#View(taxoTAB[["OTUtab.cytB.R1.IDT.All"]])
+View(taxoTAB[["ASVtab.12s.IDT.QC"]])
 
 
 # Compare SEQ assignation -------------------------------------------------

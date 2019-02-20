@@ -17,7 +17,7 @@ for(i in 1:length( list.files("./03_Functions") )){
 load(get.value("CORRECTEDtable.data"))
 load(get.value("ALLtable.data"))
 
-ASVtab.12s.wTAXO %>% filter(ID == "ASV_122") %>% row.names()
+ASVtab.12s.wTAXO %>% filter(ID == "ASV_17")
 
 ASVtab.12s[ ,] %>% View()
 
@@ -30,6 +30,7 @@ DNA
 writeXStringSet(DNA, "ASVOTU.db.fasta")
 
 
+writeXStringSet(readDNAStringSet(file.path(get.value("ref.path"),"QC_12S-eco_unique_dup.fasta")), "SP.db.fasta")
 
 
 # Blast -------------------------------------------------------------------
@@ -47,32 +48,54 @@ cmd <- paste("-in", "ASVOTU.db.fasta",
 system2(get.value("makeblastdb"), cmd, stdout=T, stderr=T) 
 
 
+
+cmd <- paste("-in", "SP.db.fasta",
+             "-dbtype", "nucl",
+             "-parse_seqids", 
+             sep = " ") # forward adapter
+
+system2(get.value("makeblastdb"), cmd, stdout=T, stderr=T) 
+
+
+
+
+
 # Blast it!
 
 
 SEQ <- readDNAStringSet(file.path(get.value("ref.path"),"QC_12S-eco_unique_wTAXO.fasta"))
-
 names(SEQ)
+
+SEQ <- readDNAStringSet(file.path(get.value("ref.path"),"LabSeq", "LabSeq.fasta"))
+SEQ 
                         
 get.value("blastn")
 
 
+FILES <- file.path(get.value("ref.path"),"LabSeq", "LabSeq.fasta")
 
 cmd <- paste("-db", "ASVOTU.db.fasta",
-             "-query", file.path(get.value("ref.path"),"QC_12S-eco_unique_wTAXO.fasta"),
+             "-query", FILES,
              "-outfmt", "7",
              "-out", "results.out", 
              sep = " ") # forward adapter
 
+cmd <- paste("-db", "SP.db.fasta",
+             "-query", FILES,
+             "-outfmt", "7",
+             "-out", "results.out", 
+             sep = " ") 
 system2(get.value("blastn"), cmd, stdout=T, stderr=T) 
-A
+
 
 
 RES <- read.table("results.out")
 
 names(RES) <- c("query acc.ver", "subject acc.ver", "Identity", "AlignmentLength", "mismatches", "gap opens", "q. start", "q. end", "s. start", "s. end", "evalue", "bit score")
 
-View(RES %>% filter(Identity >= 97, 
+View(RES)
+
+View(RES %>% filter(Identity >= 99, 
                     AlignmentLength >= 100))
 
 str(RES)
