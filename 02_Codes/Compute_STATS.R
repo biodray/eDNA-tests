@@ -122,7 +122,9 @@ for(x in ls() %>% str_subset("wTAXO")){
 
 ls() %>% str_subset("byID.SP")
 
+# blast99
 
+load(get.value("Blast99.data"))
 
 
 
@@ -2407,4 +2409,14 @@ summary(mod1)
 library(effects)
 
 plot(allEffects(mod1))
+
+
+# Check blast 99 ----------------------------------------------------------
+
+
+ASVtab.12s.byID.SP %>% group_by(ID, Assign) %>% 
+                       summarise(N = sum(N)) %>% 
+                       left_join(Blast99) %>% View()
+
+head(Blast99)
 
