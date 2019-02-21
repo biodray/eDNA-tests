@@ -184,27 +184,6 @@ get_uniqueSeq <- function(fn, fn.new = NULL, verbose = F){
 } # END function uniqueSeq
 
 
-
-# when taxonomy, keep element 7
-
-keep_sp <- function(COL){
-  if(str_detect(COL[1], pattern = ";")){
-      res <- sapply(str_split(COL, pattern=";"), `[`, 7)
-  } else {
-      res <- paste(sapply(str_split(COL, pattern=" "), `[`, 2),
-                   sapply(str_split(COL, pattern=" "), `[`, 3),
-                   sep = " ")
-  }
-  
-  if(is.na(res[1])){
-    stop("Il y a deja seulement le nom de l'espece, action non effectuee", call. = F)
-  
-  
-  }
-    return(res)
-  
-}
-
 # apply to each column
 capply <- function(df, FUN){
   for(c in 1:ncol(df)){
