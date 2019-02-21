@@ -44,7 +44,7 @@ SEQ.REF
 PARAM <-  expand.grid(LOCUS = c("12s", "cytB.R1", "cytB.R2"), 
                       OTU = c("ASV", "OTU"),
                       ASSIGN = c("RDP","IDT"),
-                      SP = c("QC", "All"))
+                      SP = c("All"))
 
 PARAM$TAB <- paste0(PARAM$OTU, "tab.", PARAM$LOCUS)
 PARAM
@@ -86,15 +86,15 @@ SEQtable.tr <- function(tab){
 
 
 # Function to run assigntaxonomy then assignspecies  
-RDP <- function(seqtab, REF.TAXO, REF.SP){
+RDP <- function(seqtab, REF.TAXO, REF.SP = NULL){
                 
                 #seqtab2 <- SEQtable.tr(seqtab)
                 
                 taxo <- assignTaxonomy(seqtab, REF.TAXO, 
                         taxLevels = c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species_80"), 
-                        minBoot=50, tryRC = TRUE)
+                        minBoot=80, tryRC = TRUE)
   
-                taxowSP <-  addSpecies(taxo, REF.SP, allowMultiple = T, tryRC = TRUE)
+                #taxowSP <-  addSpecies(taxo, REF.SP, allowMultiple = T, tryRC = TRUE)
   
                 #for(x in 1:nrow(taxowSP)){
                   
@@ -102,7 +102,7 @@ RDP <- function(seqtab, REF.TAXO, REF.SP){
 
                 #} 
                 
-                return(taxowSP)
+                return(taxo)
 }
 
 
@@ -116,16 +116,35 @@ for(x in 1:nrow(PARAM)){
 
       print(PARAM[x,"TAB"])
     
-      REF.taxo <- SEQ.REF %>% str_subset("unique_wTaxo_dup.fasta") %>% str_subset(toupper(PARAM[x,"LOCUS"]) %>% str_remove(".R[:digit:]"))  %>% str_subset(as.character(PARAM[x,"SP"]))
-      REF.sp   <- SEQ.REF %>% str_subset("unique_dup.fasta") %>% str_subset(toupper(PARAM[x,"LOCUS"])%>% str_remove(".R[:digit:]")) %>% str_subset(as.character(PARAM[x,"SP"]))
-
+      REF.taxo <- SEQ.REF %>% str_subset("unique_wTaxo_dup.fasta") %>% str_subset(toupper(PARAM[x,"LOCUS"])) %>% str_subset(as.character(PARAM[x,"SP"]))
+      REF.sp   <- SEQ.REF %>% str_subset("unique_dup.fasta") %>% str_subset(toupper(PARAM[x,"LOCUS"])) %>% str_subset(as.character(PARAM[x,"SP"]))
+      DB.sp    <- REF.sp %>% str_replace(get.value("ref.path"), file.path(get.value("ref.path"),"Blast")) %>% str_replace(".fasta", "_DB.fasta")
+      
       SEQTAB <- SEQtable.tr(get(PARAM[x,"TAB"]))
   
       # the function get() is use to call an object by its name
       taxoRPD <- RDP(SEQTAB, REF.taxo, REF.sp) 
 
+      # To create a ref DB
+
+      make.blast.db(FILE = REF.sp, 
+                    DB = DB.sp)
       
-      taxoTAB[[paste(PARAM[x,"TAB"], "RDP", as.character(PARAM[x,"SP"]), sep=".")]]<- taxoRPD
+      # To BLAST at 100% identity
+       cat(file = file.path(get.value("ref.path"),"Blast", "input.fasta"), append = F)
+       for(y in dimnames(SEQTAB)[[2]]){
+               cat(paste0(">",y), y, sep = "\n", 
+                   file = file.path(get.value("ref.path"),"Blast", "input.fasta"), 
+                   append = T)
+               }
+      
+      BLAST.RES <- BLAST.IDENTIC(FILE.TO.BLAST = file.path(get.value("ref.path"),"Blast", "input.fasta"), 
+                                 DB =  DB.sp)
+      
+      taxoRPD2  <- cbind(taxoRPD, BLAST.RES$SP)
+      dimnames(taxoRPD2)[[2]][8] <- "Species"
+      
+      taxoTAB[[paste(PARAM[x,"TAB"], "RDP", as.character(PARAM[x,"SP"]), sep=".")]]<- taxoRPD2
     
   }
 }
@@ -179,9 +198,9 @@ plot(TS.ls[["All.12s"]])
 plot(TS.ls[["All.cytB.R1"]])
 plot(TS.ls[["All.cytB.R2"]])
 
-plot(TS.ls[["QC.12s"]])
-plot(TS.ls[["QC.cytB.R1"]])
-plot(TS.ls[["QC.cytB.R2"]])
+#plot(TS.ls[["QC.12s"]])
+#plot(TS.ls[["QC.cytB.R1"]])
+#plot(TS.ls[["QC.cytB.R2"]])
 
 
 # Idtaxa on all data set
@@ -254,6 +273,7 @@ for(x in 1:nrow(PARAM)){
   }
 }
 
+
 names(taxoTAB)
 names(taxoTAB.IDT)
 
@@ -267,7 +287,7 @@ names(taxoTAB)
 
 
 SEQ.PARAM <- expand.grid(ASSIGN = c("RDP", "IDT"),
-                         SP = c("QC", "All"))
+                         SP = c("All"))
 
 COMP.SEQ <- list()
 

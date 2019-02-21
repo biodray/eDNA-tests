@@ -461,7 +461,6 @@ for(x in complete.files){
 }
 
 
-
 # Verifier les doublons inter-sp et les ajouter à la main
 # Eventuellement ca pourrait être codé aussi
 
