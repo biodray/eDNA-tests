@@ -936,8 +936,8 @@ Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
                            str_detect(Assign, "Teleostei"),
                            str_detect(Espece, " "),
                            N >= 1) %>% 
-  bind_rows (expand.grid(Mix = c("Mix1", "Mix2"),
-                         Espece = "Margariscus margarita")) %>% 
+  #bind_rows (expand.grid(Mix = c("Mix1", "Mix2"),
+  #                       Espece = "Margariscus margarita")) %>% 
   left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
             by = c("Espece" = "Espece_initial"))  %>% #View()
   mutate(Espece = ifelse(Espece == "Salvelinus fontinalis", "Salvelinus sp.", Espece),
@@ -965,6 +965,7 @@ Mock.abund.data <- Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
                                        filter(Locus %in%  c("12s", "cytB.R1"),
                                               Name.level %in% c("Salvelinus fontinalis",
                                                                 "Salvelinus", 
+                                                                "Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", 
                                                                 "Micropterus dolomieu")) %>%
                                        mutate(Species = ifelse(Name.level == "Salvelinus", "Salvelinus fontinalis", Name.level)) %>% 
                                        left_join(Mock.final)
@@ -991,7 +992,9 @@ Mock.abund.data %>% filter(!(Locus == "cytB.R1" & Name.level =="Salvelinus" )) %
 
 # Version courte
 
-Mock.abund.data %>% filter(Locus == "12s", Method == "ASV") %>% #View()
+# Le left_join ne fonctionne pas ...
+
+Mock.abund.data %>% filter(Locus == "12s", Method == "ASV") %>% View()
   #mutate(Ncor = ifelse(N ==0, 0.8, N)) %>% 
   ggplot(aes(x = DNAfinal, y = N, col = Species, shape = Species))+
   geom_smooth(method = "lm", se = F , lty = "dashed", size = 1, fill = "gray", show.legend=FALSE)  +
@@ -999,12 +1002,12 @@ Mock.abund.data %>% filter(Locus == "12s", Method == "ASV") %>% #View()
   geom_jitter(width = 0.05, height = 0, size = 2)+
   scale_x_continuous(trans = "log10")+
   scale_y_continuous(limits = c(1, 1000), trans = "log10")+
-  scale_color_discrete(name = NULL,
-                       breaks = c("Salvelinus fontinalis", "Micropterus dolomieu"),
-                       labels = c("Salvelinus sp.", "Achigan à petite bouche"))+
-  scale_shape_discrete(name = NULL,
-                       breaks = c("Salvelinus fontinalis", "Micropterus dolomieu"),
-                       labels = c("Salvelinus sp.", "Achigan à petite bouche"))+
+  # scale_color_discrete(name = NULL,
+  #                      breaks = c("Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", "Micropterus dolomieu"),
+  #                      labels = c("Salvelinus sp.", "Achigan à petite bouche"))+
+  # scale_shape_discrete(name = NULL,
+  #                      breaks = c("Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", "Micropterus dolomieu"),
+  #                      labels = c("Salvelinus sp.", "Achigan à petite bouche"))+
   labs(title= NULL, x ="Concentration d'ADN (ng/ul)", y = "N lectures") +                         
   #facet_grid(. ~ Species) +
   
