@@ -23,6 +23,7 @@ library(gtools)    # for mixedsort
 #devtools::install_github("kassambara/ggpubr")
 library(ggpubr)    # on github - for nice graphs
 
+#Function "Not IN"
 `%nin%` = Negate(`%in%`)
 
 # Data --------------------------------------------------------------------
@@ -925,9 +926,12 @@ Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
 
 # Version courte
 
-Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
+graph1 <- Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
                            Locus = Data %>% str_remove(paste0(Method, "tab.")),
                            Espece = ifelse(str_detect(Name.level, "Salvelinus"), "Salvelinus fontinalis", Name.level),
+                           Presence = ifelse(Espece %in% Mock.dat$Species, "Espèce présente", "Espèce absente"),
+                           Presence = factor(Presence, levels = c("Espèce présente", "Espèce absente")),
+                           Espece = ifelse(str_detect(Name.level, "Salvelinus"), "Salvelinus sp.", Name.level),
                            NwNA = ifelse(N == 0, NA, N)) %>% 
                     filter(Method == "ASV",
                            Locus == "12s",
@@ -940,83 +944,77 @@ Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
   #                       Espece = "Margariscus margarita")) %>% 
   left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
             by = c("Espece" = "Espece_initial"))  %>% #View()
-  mutate(Espece = ifelse(Espece == "Salvelinus fontinalis", "Salvelinus sp.", Espece),
-         NomFR =ifelse(Espece == "Salvelinus sp.",  "Salvelinus sp.", NomFR)) %>% 
+  #mutate(Espece = ifelse(Espece == "Salvelinus fontinalis", "Salvelinus sp.", Espece),
+  #       NomFR =ifelse(Espece == "Salvelinus sp.",  "Salvelinus sp.", NomFR)) %>% 
   
-  ggplot(aes(x = Mix, y = NomFR, fill = NwNA)) + 
+  ggplot(aes(y = Mix, x = NomFR, fill = NwNA)) + 
   geom_bin2d(col = "darkgray") + 
   scale_fill_distiller(palette = "Spectral", trans = "log10",  na.value = "white", limits= c(1,NA)) +
   #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
   #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
-  labs(title= NULL, x ="Communauté simulée", y = NULL) +
-  guides(fill = guide_colourbar(title = "N lectures", title.hjust = 0)) + 
+  labs(title= NULL, x =NULL, y = "Communauté simulée") +
+  guides(fill = guide_colourbar(title = "N séquences", title.hjust = 0)) + 
   theme_bw()+
-  facet_grid(Family~., scale = "free", space = "free") +
+  facet_grid(.~ Presence, scale = "free", space = "free") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
         axis.ticks.y = element_blank(),
-        strip.text.y = element_text(angle = 0)) #+ coord_flip()
+        axis.text.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white")) #+ coord_flip()
 
+graph1
+
+ggsave(file.path(get.value("result.FINAL"),"Mock.short.png"), plot = graph1,
+       width = 7, height = 4, units = "in")
 
 # Abundance
 
 
 Mock.abund.data <- Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
                                               Locus = Data %>% str_remove(paste0(Method, "tab."))) %>%  
-                                       filter(Locus %in%  c("12s", "cytB.R1"),
-                                              Name.level %in% c("Salvelinus fontinalis",
-                                                                "Salvelinus", 
-                                                                "Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", 
-                                                                "Micropterus dolomieu")) %>%
-                                       mutate(Species = ifelse(Name.level == "Salvelinus", "Salvelinus fontinalis", Name.level)) %>% 
-                                       left_join(Mock.final)
-                                                 #by = c("Name.level" = "Species", "Mix" = "Mix"))
+                                       filter(Locus %in%  c("12s"),
+                                              Method == "ASV") %>% # View()
+                                       mutate(Espece = ifelse(str_detect(Name.level, "Salvelinus namaycush"), "Salvelinus fontinalis", Name.level)) %>% #View()
+  
+                                      filter(Espece %in% c("Salvelinus fontinalis", 
+                                                              "Micropterus dolomieu")) %>% #View()
+                                       left_join(Mock.final,
+                                                 by = c("Espece" = "Species", "Mix" = "Mix")) %>% 
 
-Mock.abund.data %>% filter(!(Locus == "cytB.R1" & Name.level =="Salvelinus" )) %>% 
-                    group_by(Locus, Name.level, Method) %>% 
+                                          mutate(Espece = ifelse(str_detect(Name.level, "Salvelinus namaycush"), "Salvelinus sp.", Name.level))
+
+Mock.abund.data %>% group_by(Locus, Name.level, Method) %>% 
                     summarise(rho= cor.test(N, DNAfinal, method = "spearman")$estimate,
                               p.value= cor.test(N, DNAfinal, method = "spearman")$p.value,
                               N = length(N))
 
-# Version longue
-
-Mock.abund.data %>% filter(!(Locus == "cytB.R1" & Name.level =="Salvelinus" )) %>%
-                    mutate(Ncor = N + 1) %>% 
-                     ggplot(aes(x = DNAfinal, y = Ncor, col = Method, shape = Method))+
-                           geom_smooth(method = "lm", se = T , lty = "dashed", size = 0.5, fill = "gray85")  +
-                           geom_jitter(width = 0.05, height = 0.05, size = 2)+
-                           scale_x_continuous(trans = "log10")+
-                           scale_y_continuous(trans = "log10")+
-  labs(title= NULL, x ="Concentration d'ADN (ng/ul)", y = "N lectures") +                         
-  facet_grid(Locus ~ Species) +
-                           theme_bw()
-
 # Version courte
 
-# Le left_join ne fonctionne pas ...
-
-Mock.abund.data %>% filter(Locus == "12s", Method == "ASV") %>% View()
+graph2 <- Mock.abund.data %>% 
   #mutate(Ncor = ifelse(N ==0, 0.8, N)) %>% 
-  ggplot(aes(x = DNAfinal, y = N, col = Species, shape = Species))+
+  ggplot(aes(x = DNAfinal, y = N, col = Espece, shape = Espece))+
   geom_smooth(method = "lm", se = F , lty = "dashed", size = 1, fill = "gray", show.legend=FALSE)  +
   #geom_point(size = 2)+
   geom_jitter(width = 0.05, height = 0, size = 2)+
   scale_x_continuous(trans = "log10")+
   scale_y_continuous(limits = c(1, 1000), trans = "log10")+
-  # scale_color_discrete(name = NULL,
-  #                      breaks = c("Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", "Micropterus dolomieu"),
-  #                      labels = c("Salvelinus sp.", "Achigan à petite bouche"))+
-  # scale_shape_discrete(name = NULL,
-  #                      breaks = c("Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", "Micropterus dolomieu"),
-  #                      labels = c("Salvelinus sp.", "Achigan à petite bouche"))+
-  labs(title= NULL, x ="Concentration d'ADN (ng/ul)", y = "N lectures") +                         
+   scale_color_discrete(name = "Légende",
+                        breaks = c("Salvelinus sp.", "Micropterus dolomieu"),
+                        labels = c("Salvelinus sp.", "Achigan à petite bouche"))+
+   scale_shape_discrete(name = "Légende",
+                        breaks = c("Salvelinus sp.", "Micropterus dolomieu"),
+                        labels = c("Salvelinus sp.", "Achigan à petite bouche"))+
+  labs(title= NULL, x ="Concentration d'ADN (ng/ul)", y = "N séquences") +                         
   #facet_grid(. ~ Species) +
   
  # guide_legend(title = "Espèce") +
-  theme_bw() + theme(legend.position = c(0.75, 0.2))
+  theme_classic() + theme(legend.position = c(0.75, 0.15),
+                          legend.background = element_rect(colour="darkgray"))
 
+graph2
 
-
-
+ggsave(file.path(get.value("result.FINAL"),"Mock.abundancet.png"), plot = graph2,
+       width = 5, height = 4, units = "in")
 
 
 # N haplotypes ------------------------------------------------------------
@@ -1139,7 +1137,7 @@ ASVtab.12s.wTAXO %>% left_join(ASV.12s.SEQ) %>%
 
 
 
-DATA <- ASVtab.12s.cor.wTAXO %>% left_join(ASV.12s.SEQ) %>% 
+DATA <- ASVtab.12s.cor.wTAXO %>% left_join(ASV.12s.SEQ) %>% filter(Assign == "Root;Chordata;Teleostei;Salmoniformes;Salmonidae;Salvelinus") %>% pull(SEQ)
   mutate(Assign = Assign %>% str_replace("Salvelinus", "Salvelinus;Salvelinus sp.")) %>% 
   filter(str_detect(Assign, "Teleostei"),
          str_detect(Assign, " "), 
@@ -1262,12 +1260,15 @@ Sample.data <- rbind(Sample.data, DATA)
 # Try to do something with blast99
 
 
-Sample.data <- Sample.data %>% mutate(#Integrate the 99 blast results
-                                      SP = ifelse(Locus == "12s" & Method == "ASV", SP, NA),
-                                      SP = ifelse( str_detect(SP,"/")==F, SP, NA ),
-                                      Identic.SP = ifelse(NameAssign == SP, "Oui", "Non"),
-                                      NameAssign.99 = ifelse(is.na(Identic.SP),NameAssign,
-                                                             ifelse(Identic.SP == "Non", paste(SP, "1pb"), NameAssign)),
+Sample.data <- Sample.data %>% mutate(Method = str_sub(Data,1,3),
+                                      Locus = Data %>% str_remove(paste0(Method, "tab.")),
+  #Integrate ALL the 99 blast results
+                                      #SP = ifelse(Locus == "12s" & Method == "ASV", SP, NA),
+                                      #SP = ifelse( str_detect(SP,"/")==F, SP, NA ),
+                                      #Identic.SP = ifelse(NameAssign == SP, "Oui", "Non"),
+                                      # Integrate only luxilus cornutus  
+                                      NameAssign.99 = ifelse(SP == "Luxilus cornutus", SP, NameAssign), 
+                                      NameAssign.99 = ifelse(is.na(NameAssign.99), NameAssign, NameAssign.99),
                                       # 
                                       Locus = Data %>% str_remove(paste0(Method, "tab.")),
                                       Taxo = ifelse(Level == 0, "Root",
@@ -1279,12 +1280,8 @@ Sample.data <- Sample.data %>% mutate(#Integrate the 99 blast results
                                              ifelse(Level == 6, "Espece", NA))))))),
                                       Taxo = factor(Taxo, levels = c("Root","Phylum","Classe", "Ordre", "Famille", "Genre", "Espece" ))
                                       ) %>% 
-  left_join(LacInv1 %>% filter(Espece == "Salvelinus fontinalis") %>% select(NomLac, Location)) %>% 
-  mutate(Location = factor(Location, levels = c("Avant-pays", "Arriere-pays")))
-
-Sample.data  %>% filter(is.na(NameAssign.99)) %>% View()
-
-
+                              left_join(LacInv1 %>% filter(Espece == "Salvelinus fontinalis") %>% select(NomLac, Location)) %>% 
+                              mutate(Location = factor(Location, levels = c("Avant-pays", "Arriere-pays")))
 
 # Basis stats
 
@@ -1296,9 +1293,6 @@ Sample.data %>% filter(Data == "ASVtab.12s") %>%
 
 
 
-
-
-
 # Graph of what was done
 
 Sample.data %>% filter(str_detect(Assign, "Teleostei") == T,
@@ -1306,14 +1300,14 @@ Sample.data %>% filter(str_detect(Assign, "Teleostei") == T,
                    str_detect(Assign, "Sebaste") == F,
                    Locus %in% c("12s"),
                    Method %in% c("ASV")) %>%
-  group_by(NomLac, Locus, Method, NameAssign.99, Taxo, Location) %>% 
+  group_by(NomLac, Locus, Method, NameAssign, NameAssign.99, Taxo, Location) %>% 
   summarise(Nmed = median(N),
             Nmax = max(N)) %>% #View()
   
   #mutate(Locus = ifelse(Locus == "12s", "12s", "cytB (R1)")) %>% 
   filter(Nmax>=0) %>% # View()
   
-  ggplot(aes(x = NomLac, y = NameAssign.99, fill = Nmax)) + 
+  ggplot(aes(x = NomLac, y = NameAssign, fill = Nmax)) + 
   geom_bin2d(col = "gray") + 
   scale_fill_distiller(palette = "Spectral", trans = "log10",  na.value = "White") +
   #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
@@ -1327,76 +1321,296 @@ Sample.data %>% filter(str_detect(Assign, "Teleostei") == T,
         strip.text.y = element_text(angle = 0)) #+ coord_flip()
 
 
+# Proportion des échantilllons avec l'une ou l'autre des espèces
 
+Sample.graph <- Sample.data %>% mutate(NameAssign.99 = ifelse(NameAssign.99 == "Salvelinus", "Salvelinus sp.", 
+                                                              ifelse(NameAssign.99 == "Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", "Salvelinus sp.",NameAssign.99))) %>% 
+                                filter(str_detect(Assign, "Teleostei"),
+                                       str_detect(NameAssign.99, " "), 
+                                       str_detect(NameAssign.99, "Gadus morhua") == FALSE,
+                                       #str_detect(NameAssign.99, "Salmo salar") == FALSE,
+                                       str_detect(NameAssign.99, "Sebaste") == FALSE#,         
+                                       #Locus %in% c("12s"),
+                                       #Method %in% c("ASV")
+                                       )  %>% 
+                                #Some species with problems
+                                group_by(NomLac, Locus, Method, Sample, NameAssign.99, Volume, CorrFiltre) %>% 
+                                summarise(N = sum(N, na.rm = T)) %>%  
+                                #Complete for all species
+                                complete(NameAssign.99, NomLac, Method, Locus) %>% 
+                                mutate(N = ifelse(is.na(N), 0, N),
+                                       Nlog = ifelse(N == 0 , NA, 
+                                                    ifelse(N == 1, 0.5, log2(N))),
+                                       Nlog.cor = ifelse(is.na(Nlog), NA, Nlog / CorrFiltre / Volume * 1000)
+                                       ) %>% #View()
+                                # Get one line by sp / lake
+                                group_by(NameAssign.99, NomLac, Method, Locus) %>% 
+                                summarise(
+                                          Ncor = mean(Nlog.cor, na.rm = T),
+                                          #Nsample = length(unique(Sample)), # existe plus bas
+                                          Nmax = max(N),
+                                          NsampleTot = length(N),
+                                          NsamplePre = length(N[N>=1]),
+                                          PropSample = NsamplePre/NsampleTot,
+                                          N = mean(N)) %>% #View() 
+                                mutate(PropSample2 = ifelse(PropSample == 0, NA, PropSample),
+                                       PresenceADNe = ifelse(NsamplePre>=1,1,NA),
+                                       NsamplePre2 = ifelse(NsamplePre >=2,"2 et plus",NA)) %>%
+                                # Remove grouping factor
+                                group_by() %>% 
+                                # Comparison trad vs ADNe
+                                #mutate(PresenceADNe = ifelse(N > 0, 1, 0)) %>% #View()
+                                full_join(LacInv1 %>% select(NomLac, Location, Espece, Presence),
+                                          by = c("NomLac" = "NomLac", "NameAssign.99" = "Espece")) %>% 
+                                mutate(PresenceADNe = ifelse(is.na (PresenceADNe), 0, PresenceADNe),
+                                       DiffInv = ifelse(PresenceADNe == Presence, 
+                                                        ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
+                                                        ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul"))) %>% #View()
+                                # Add species french name
+                                left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
+                                          by = c("NameAssign.99" = "Espece_initial")) %>% 
+                                # Add lac info
+                                left_join(LacSample %>% select(NomLac, Rotenode, Affluent, Effluent, Bassin, SousBassin, Ordre, Volume),
+                                          by = "NomLac") %>% 
+                                mutate(NewBassin = ifelse(Bassin == "Isae", paste(Bassin,SousBassin,sep=":"), Bassin),
+                                       NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Wapizagonke", "Aticagamac", "Cinq", "Cauche", "Theode", "St-Maurice", "Mattawin", "Isolé")),
+                                       NewNomLac = ifelse(is.na(Affluent), paste(NomLac, "*"), NomLac)) %>% 
+                                arrange(NewBassin, Ordre)  
+
+# Keep only
+Sample.graph.red <- bind_rows(Sample.graph %>% filter(Method %in% c("ASV", NA),
+                                                  Locus %in% c("12s", NA),
+                                                  NomFR != "Omble de fontaine"),
+                          Sample.graph %>% filter(Method == "ASV",
+                                                  Locus == "cytB.R1",
+                                                  NomFR == "Omble de fontaine")# %>% View()
+                          ) %>%  
+                mutate(NomFR = ifelse(NomFR %in% c("Omble de fontaine", "Méné à nageoires rouges"), paste(NomFR, "*"), NomFR),
+                       NomFR = factor(NomFR, levels = rev(c("Omble de fontaine *", "Omble chevalier", "Touladi", "Salvelinus sp.", "Saumon atlantique", 
+                                                          
+                                                            "Barbotte brune", 
+                                                            "Meunier noir",
+                                                            "Perchaude", "Doré jaune", "Fouille-roche zébré",
+                                                            "Achigan à petite bouche", "Crapet de roche", "Crapet-soleil",
+                                                              "Épinoche à cinq épines", "Épinoche à neuf épines",
+                                                            "Mulet à cornes", "Mulet perlé", "Tête-de-boule", "Ventre rouge du nord", "Méné à nageoires rouges *", "Méné jaune", "Museau noir", "Naseux des rapides", "Ouitouche",
+                                                            
+                                                            "Chabot à tête plate",
+                                                            "Fondule barré",
+                                                            "Éperlan arc-en-ciel",
+                                                            "Grand brochet")))
+                       )
+
+
+Sample.graph %>% group_by(NameAssign.99, NsamplePre) %>% 
+  summarise(N = n()) %>% 
+  group_by() %>% 
+  complete(NameAssign.99, NsamplePre, fill = list(0)) %>% #View()
+  filter(NsamplePre >=1) %>% 
+  ggplot(aes(x=NsamplePre, y=N, fill=factor(NsamplePre))) +
+  geom_bar(width = 1, stat = "identity", position = "dodge") +
+  #coord_polar("y", start=0) +
+  facet_wrap(~NameAssign.99)
+ 
+
+Sample.graph %>% group_by(NsamplePre) %>% 
+  summarise(N = n())
+ 
+SP.presentes <- Sample.graph.red %>% filter(N >= 1) %>% 
+                                 pull(NomFR) %>% unique() %>% as.character()
+
+
+graph3 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
+                                       NomFR %in% SP.presentes) %>% 
+    ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  scale_fill_manual(values = "limegreen", limits = "1") +
+  #scale_fill_discrete(na.value = "white", guide = "none") +
+  #geom_point(size = 3,  stroke = 1, col = "gray20") +
+ 
+#  scale_shape_manual(values = c(1), name = NULL, limits = "2 et plus", labels = c("Présent dans plus\nd'un échantillon")) +
+
+  #scale_shape_manual(values = c(49,50,51,52,53,54,55,56,57,58), name = NULL, limits = c("1","2","3", "4", "5", "6", "7", "8","9","10"), guide = "none") +
+  
+  #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
+  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
+  labs(title= NULL, x =NULL, y = NULL) +
+  guides(fill = FALSE) + 
+  theme_bw()+
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white")
+        ) 
+
+graph4 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
+                                       NomFR %in% SP.presentes) %>% 
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  scale_fill_manual(values = "limegreen", limits = "1") +
+  #scale_fill_discrete(na.value = "white", guide = "none") +
+  #geom_point(size = 3,  stroke = 1, col = "gray20") +
+  
+  #  scale_shape_manual(values = c(1), name = NULL, limits = "2 et plus", labels = c("Présent dans plus\nd'un échantillon")) +
+  
+  #scale_shape_manual(values = c(49,50,51,52,53,54,55,56,57,58), name = NULL, limits = c("1","2","3", "4", "5", "6", "7", "8","9","10"), guide = "none") +
+  
+  #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
+  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
+  labs(title= NULL, x =NULL, y = NULL) +
+  guides(fill = FALSE) + 
+  theme_bw()+
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust= 0.5),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white")
+  ) 
+
+
+ggarrange(graph3 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
+                  ggtitle("Avant-pays"),
+          graph4 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
+            theme(axis.text.y=element_blank())+
+            ggtitle("Arrière-pays"),
+          #labels = c("A. Avant-pays", "B. Arrière-pays"),
+          #vjust = 1, hjust = 1,
+          widths = c(1.7, 1),
+          ncol=2, align = "hv")
+
+# Then add info on quality
+
+graph5 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
+                                       NomFR %in% SP.presentes) %>% 
+                                mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  scale_fill_distiller(palette = "YlGn", direction = 1, na.value="white", limits = c(0,110)) +
+  #scale_fill_discrete(na.value = "white", guide = "none") +
+  geom_point(size = 2,  stroke = 1, col = "gray20") +
+  
+  #scale_shape_manual(values = c(1), name = NULL, limits = "2 et plus", labels = c("Présent dans plus\nd'un échantillon")) +
+  
+  scale_shape_manual(values = c(49,50,51,52,53,54,55,56,57,58), name = NULL, limits = c("1","2","3", "4", "5", "6", "7", "8","9","10"), guide = "none") +
+  
+  #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
+  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
+  labs(title= NULL, x =NULL, y = NULL) +
+  #guides(fill = FALSE) + 
+  theme_bw()+
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white")
+  ) 
+
+
+graph6 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
+                                       NomFR %in% SP.presentes) %>% 
+  mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>%# pull(Ncor) %>% max()
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  scale_fill_distiller(palette = "YlGn", direction = 1, na.value="white", limits = c(0,110)) +
+  #scale_fill_discrete(na.value = "white", guide = "none") +
+  geom_point(size = 2,  stroke = 1, col = "gray20") +
+  
+  #scale_shape_manual(values = c(1), name = NULL, limits = "2 et plus", labels = c("Présent dans plus\nd'un échantillon")) +
+  
+  scale_shape_manual(values = c(49,50,51,52,53,54,55,56,57,58), name = NULL, limits = c("1","2","3", "4", "5", "6", "7", "8","9","10"), guide = "none") +
+  
+  #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
+  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
+  labs(title= NULL, x =NULL, y = NULL) +
+  #guides(fill = FALSE) + 
+  theme_bw()+
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white")
+  ) 
+
+
+ggarrange(graph5 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
+            ggtitle("Avant-pays"),
+          graph6 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
+            theme(axis.text.y=element_blank())+
+            ggtitle("Arrière-pays"),
+          #labels = c("A. Avant-pays", "B. Arrière-pays"),
+          #vjust = 1, hjust = 1,
+          widths = c(1.7, 1),
+          ncol=2, align = "hv", common.legend = T, legend = "right") 
 
 # Comparison trad vs eDNA
 
-head(Sample.data)
-
-#CompPAtrad %>% filter(NameAssign.99 == "Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus")
-
-CompPAtrad <- Sample.data %>% select(Assign, Sample, N, NameAssign.99, CatSite, NomLac, Method, Locus, CorrFiltre, Volume) %>% 
-                              # Correct the number of observed reads
-                              mutate(NameAssign.99 = ifelse(NameAssign.99 == "Salvelinus", "Salvelinus sp. 3pb", 
-                                                            ifelse(NameAssign.99 == "Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", "Salvelinus sp.",NameAssign.99))) %>% 
-                              filter(str_detect(Assign, "Teleostei"),
-                                     str_detect(NameAssign.99, " "), 
-                                     str_detect(NameAssign.99, "Gadus morhua") == FALSE,
-                                     str_detect(NameAssign.99, "Salmo salar") == FALSE
-                                     ) %>% 
-                              complete(NameAssign.99, NomLac, Method, Locus, CatSite) %>% 
-                              mutate(N = ifelse(is.na(N), 0, N),
-                                     Nlog = ifelse(N == 0 , 0, 
-                                                   ifelse(N == 1, 0.5, log2(N))),
-                                     Nlog.cor = Nlog / CorrFiltre / Volume * 1000) %>% #View() 
-                              group_by(NameAssign.99, NomLac, Method, Locus) %>% 
-                              summarise(N = mean(N),
-                                        Ncor = mean(Nlog.cor, na.rm = T),
-                                        Nsample = length(unique(Sample))) %>% 
-                              group_by() %>% 
-                              mutate(PresenceADNe = ifelse(N > 0, 1, 0),
-                                     NameAssign.99.compare = str_remove(NameAssign.99," [:digit:]pb")) %>% #View()
-                              full_join(LacInv1 %>% select(NomLac, Location, Espece, Presence),
-                                        by = c("NomLac" = "NomLac", "NameAssign.99.compare" = "Espece")) %>% 
-                              mutate(PresenceADNe = ifelse(is.na (PresenceADNe), 0, PresenceADNe),
-                                     DiffInv = ifelse(PresenceADNe == Presence, 
-                                                      ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
-                                               ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul"))) %>% #View()
-                             left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
-                                                     by = c("NameAssign.99.compare" = "Espece_initial")) %>% 
-                             left_join(LacSample %>% select(NomLac, Rotenode, Affluent, Effluent, Bassin, SousBassin, Ordre, Volume),
-                                        by = "NomLac") %>% 
-                             mutate(NewBassin = ifelse(Bassin == "Isae", paste(Bassin,SousBassin,sep=":"), Bassin),
-                                    NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Wapizagonke", "Aticagamac", "Cinq", "Cauche", "Theode", "St-Maurice", "Mattawin", "Isolé")),
-                                    NewNomLac = ifelse(is.na(Affluent), paste(NomLac, "*"), NomLac)) %>% 
-                             arrange(NewBassin, Ordre) %>% 
-                             mutate(NewNomLac = factor(NewNomLac, levels = unique(NewNomLac)), 
-                                    Family = factor(Family, levels = c("Salmonidae", "Cyprinidae", "Catostomidae", "Gasterosteidae", "Cottidae", "Fundulidae", "Osmeridae", "Centrarchidae", "Ictaluridae", "Percidae", "Esocidae"))
-         )
-
-CompPAtrad.red <- bind_rows(CompPAtrad %>% filter(Method %in% c("ASV", NA),
-                                                  Locus %in% c("12s", NA),
-                                                  NomFR != "Omble de fontaine"),
-                            CompPAtrad %>% filter(Method == "ASV",
-                                                  Locus == "cytB.R1",
-                                                  NomFR == "Omble de fontaine")# %>% View()
-                                                  ) %>%  
-                            # mutate(NomFR = ifelse(NomFR == "Omble de fontaine", paste(NomFR, "*"), NomFR),
-                            #        NomFR = factor(NomFR, levels = rev(c("Omble de fontaine *", "Omble chevalier", "Touladi", "Salvelinus sp.", 
-                            #                                             "Épinoche à cinq épines", "Épinoche à neuf épines",
-                            #                                             "Barbotte brune", 
-                            #                                             "Meunier noir",
-                            #                                             "Achigan à petite bouche", "Crapet de roche", "Crapet-soleil",
-                            #                                             "Mulet à cornes", "Mulet perlé", "Tête-de-boule", "Ventre rouge du nord", "Méné à nageoires rouges", "Méné jaune", "Museau noir", "Naseux des rapides", "Ouitouche",
-                            #                                             "Perchaude", "Doré jaune", "Fouille-roche zébré",
-                            #                                             "Chabot à tête plate",
-                            #                                             "Fondule barré",
-                            #                                             "Éperlan arc-en-ciel",
-                            #                                             "Grand brochet"))),
-                                  mutate( Ncor0 = ifelse(Ncor == 0, NA, Ncor),
-                                   DiffInv = ifelse((NomFR == "Salvelinus sp." & DiffInv == "Present trad seul") == T, "Present trad seul*", DiffInv))
-
-str(CompPAtrad.red)
+# head(Sample.data)
+# 
+# #CompPAtrad %>% filter(NameAssign.99 == "Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus")
+# 
+# CompPAtrad <- Sample.data %>% select(Assign, Sample, N, NameAssign.99, CatSite, NomLac, Method, Locus, CorrFiltre, Volume) %>% 
+#                               # Correct the number of observed reads
+#                               mutate(NameAssign.99 = ifelse(NameAssign.99 == "Salvelinus", "Salvelinus sp.", 
+#                                                             ifelse(NameAssign.99 == "Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", "Salvelinus sp.",NameAssign.99))) %>% 
+#                               filter(str_detect(Assign, "Teleostei"),
+#                                      str_detect(NameAssign.99, " "), 
+#                                      str_detect(NameAssign.99, "Gadus morhua") == FALSE,
+#                                      str_detect(NameAssign.99, "Salmo salar") == FALSE
+#                                      ) %>% 
+#                               complete(NameAssign.99, NomLac, Method, Locus, CatSite) %>% 
+#                               mutate(N = ifelse(is.na(N), 0, N),
+#                                      Nlog = ifelse(N == 0 , 0, 
+#                                                    ifelse(N == 1, 0.5, log2(N))),
+#                                      Nlog.cor = Nlog / CorrFiltre / Volume * 1000) %>% #View() 
+#                               group_by(NameAssign.99, NomLac, Method, Locus) %>% 
+#                               summarise(N = mean(N),
+#                                         Ncor = mean(Nlog.cor, na.rm = T),
+#                                         Nsample = length(unique(Sample))) %>% 
+#                               group_by() %>% 
+#                               mutate(PresenceADNe = ifelse(N > 0, 1, 0),
+#                                      NameAssign.99.compare = str_remove(NameAssign.99," [:digit:]pb")) %>% #View()
+#                               full_join(LacInv1 %>% select(NomLac, Location, Espece, Presence),
+#                                         by = c("NomLac" = "NomLac", "NameAssign.99.compare" = "Espece")) %>% 
+#                               mutate(PresenceADNe = ifelse(is.na (PresenceADNe), 0, PresenceADNe),
+#                                      DiffInv = ifelse(PresenceADNe == Presence, 
+#                                                       ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
+#                                                ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul"))) %>% #View()
+#                              left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
+#                                                      by = c("NameAssign.99.compare" = "Espece_initial")) %>% 
+#                              left_join(LacSample %>% select(NomLac, Rotenode, Affluent, Effluent, Bassin, SousBassin, Ordre, Volume),
+#                                         by = "NomLac") %>% 
+#                              mutate(NewBassin = ifelse(Bassin == "Isae", paste(Bassin,SousBassin,sep=":"), Bassin),
+#                                     NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Wapizagonke", "Aticagamac", "Cinq", "Cauche", "Theode", "St-Maurice", "Mattawin", "Isolé")),
+#                                     NewNomLac = ifelse(is.na(Affluent), paste(NomLac, "*"), NomLac)) %>% 
+#                              arrange(NewBassin, Ordre) %>% 
+#                              mutate(NewNomLac = factor(NewNomLac, levels = unique(NewNomLac)), 
+#                                     Family = factor(Family, levels = c("Salmonidae", "Cyprinidae", "Catostomidae", "Gasterosteidae", "Cottidae", "Fundulidae", "Osmeridae", "Centrarchidae", "Ictaluridae", "Percidae", "Esocidae"))
+#          )
+# 
+# CompPAtrad.red <- bind_rows(CompPAtrad %>% filter(Method %in% c("ASV", NA),
+#                                                   Locus %in% c("12s", NA),
+#                                                   NomFR != "Omble de fontaine"),
+#                             CompPAtrad %>% filter(Method == "ASV",
+#                                                   Locus == "cytB.R1",
+#                                                   NomFR == "Omble de fontaine")# %>% View()
+#                                                   ) %>%  
+#                             # mutate(NomFR = ifelse(NomFR == "Omble de fontaine", paste(NomFR, "*"), NomFR),
+#                             #        NomFR = factor(NomFR, levels = rev(c("Omble de fontaine *", "Omble chevalier", "Touladi", "Salvelinus sp.", 
+#                             #                                             "Épinoche à cinq épines", "Épinoche à neuf épines",
+#                             #                                             "Barbotte brune", 
+#                             #                                             "Meunier noir",
+#                             #                                             "Achigan à petite bouche", "Crapet de roche", "Crapet-soleil",
+#                             #                                             "Mulet à cornes", "Mulet perlé", "Tête-de-boule", "Ventre rouge du nord", "Méné à nageoires rouges", "Méné jaune", "Museau noir", "Naseux des rapides", "Ouitouche",
+#                             #                                             "Perchaude", "Doré jaune", "Fouille-roche zébré",
+#                             #                                             "Chabot à tête plate",
+#                             #                                             "Fondule barré",
+#                             #                                             "Éperlan arc-en-ciel",
+#                             #                                             "Grand brochet"))),
+#                                   mutate( Ncor0 = ifelse(Ncor == 0, NA, Ncor),
+#                                    DiffInv = ifelse((NomFR == "Salvelinus sp." & DiffInv == "Present trad seul") == T, "Present trad seul*", DiffInv))
+# 
+# str(CompPAtrad.red)
 #CompPAtrad.red %>% View()
 
 # 
