@@ -1402,6 +1402,22 @@ Sample.graph.red <- bind_rows(Sample.graph %>% filter(Method %in% c("ASV", NA),
                        )
 
 
+# N moyen d'espèce par lac (compte les 0) 
+
+Sample.graph.red %>% filter(N > 0) %>% group_by(NomLac) %>% 
+                     summarise(Nsp = length(unique(NameAssign.99))) %>%
+                     pull(Nsp) %>% sum()/44
+
+Sample.graph.red %>% filter(N > 0) %>% group_by(NomLac, Location) %>% 
+  summarise(Nsp = length(unique(NameAssign.99))) %>%
+  ggplot(aes(x = Nsp, fill=Location)) + geom_histogram(position="dodge")
+
+Sample.graph.red %>% filter(N > 0) %>% group_by(NomLac, Location) %>% 
+  summarise(Nsp = length(unique(NameAssign.99))) %>%
+  group_by(Location, Nsp) %>% 
+  summarise(N = n()) %>% 
+
+
 Sample.graph %>% group_by(NameAssign.99, NsamplePre) %>% 
   summarise(N = n()) %>% 
   group_by() %>% 
@@ -1425,15 +1441,6 @@ graph3 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
     ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   scale_fill_manual(values = "limegreen", limits = "1") +
-  #scale_fill_discrete(na.value = "white", guide = "none") +
-  #geom_point(size = 3,  stroke = 1, col = "gray20") +
- 
-#  scale_shape_manual(values = c(1), name = NULL, limits = "2 et plus", labels = c("Présent dans plus\nd'un échantillon")) +
-
-  #scale_shape_manual(values = c(49,50,51,52,53,54,55,56,57,58), name = NULL, limits = c("1","2","3", "4", "5", "6", "7", "8","9","10"), guide = "none") +
-  
-  #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
-  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
   labs(title= NULL, x =NULL, y = NULL) +
   guides(fill = FALSE) + 
   theme_bw()+
@@ -1449,15 +1456,6 @@ graph4 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
   ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   scale_fill_manual(values = "limegreen", limits = "1") +
-  #scale_fill_discrete(na.value = "white", guide = "none") +
-  #geom_point(size = 3,  stroke = 1, col = "gray20") +
-  
-  #  scale_shape_manual(values = c(1), name = NULL, limits = "2 et plus", labels = c("Présent dans plus\nd'un échantillon")) +
-  
-  #scale_shape_manual(values = c(49,50,51,52,53,54,55,56,57,58), name = NULL, limits = c("1","2","3", "4", "5", "6", "7", "8","9","10"), guide = "none") +
-  
-  #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
-  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
   labs(title= NULL, x =NULL, y = NULL) +
   guides(fill = FALSE) + 
   theme_bw()+
@@ -1781,6 +1779,84 @@ B <- CompPAtrad.red  %>%
 ggarrange(A + theme(axis.text.x = element_blank()),
           B + theme(strip.text = element_blank()), 
           nrow=2, align = "v", heights = c(3,1))
+
+# Liste des espèces échantillonnés dans les lacs du Parc
+SP.PARC <- LacInv1 %>% filter(NomLac %in% Sample.graph.red$NomLac %>% unique(),
+                              Presence == 1) %>% 
+                        pull(Espece) %>% unique()
+
+# Calculer le N cases
+Sample.graph.red  %>% filter(Location == "Avant-pays",
+                             NameAssign.99 %in% SP.PARC) %>%
+                      group_by(DiffInv) %>% 
+                      summarise(N = n(),
+                                Perc = N/546)  
+
+
+Sample.graph.red  %>% filter(Location == "Avant-pays",
+                             NameAssign.99 %in% SP.PARC) %>% #View()
+  ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
+  geom_bin2d(aes(fill = Ncor), col = "gray", size = 0.5) + 
+  geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
+  
+  scale_fill_distiller(palette = "Reds",
+                       direction = 1,
+                       #trans = "log10",  
+                       na.value = "White", limits = c(1,110)) +
+  
+  scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
+  #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
+  
+  labs(title= NULL, x =NULL, y = NULL) +
+  #guides(fill = guide_colourbar(title = "N moyen\nlectures", title.hjust = 0)) +
+  guides(fill = guide_colourbar(title = "Indice d'abondance\nd'ADNe", title.hjust = 0)) +
+  theme_bw ()+
+  facet_grid(. ~ NewBassin, 
+             scale = "free", space = "free", 
+             labeller = label_value,
+             switch = NULL) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, aes(size = 1/Volume/10000000)),
+        axis.ticks = element_blank(),
+        strip.text.y = element_text(angle = 0),
+        strip.text.x = element_text(angle = 90),
+        panel.spacing = unit(0, "lines"),
+        strip.placement = "outside",
+        strip.background = element_rect(colour = "black", fill = "white"),
+        axis.text.y = element_text(colour="black", hjust = 1),
+        legend.box.just = "left") + 
+  ggtitle("Avant-Pays")
+
+
+Sample.graph.red  %>% filter(Location == "Avant-pays",
+                             NameAssign.99 %in% SP.PARC) %>% #View()
+  ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
+  geom_bin2d(aes(fill = DiffInv), col = "gray", size = 0.5) + 
+  #geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
+  scale_fill_manual(values = c("green1", "green1", "yellow1", "yellow1"), 
+                    limits = c("Absent trad et ADNe", "Present trad et ADNe", "Present trad seul", "Present ADNe seul"), 
+                    labels = c("Similaire", "Similaire", "Different", "Different"),
+                    guide = "none")+
+
+  labs(title= NULL, x =NULL, y = NULL) +
+  #guides(fill = guide_colourbar(title = "N moyen\nlectures", title.hjust = 0)) +
+  #guides(fill = guide_colourbar(title = "Indice d'abondance\nd'ADNe", title.hjust = 0)) +
+  theme_bw ()+
+  facet_grid(. ~ NewBassin, 
+             scale = "free", space = "free", 
+             labeller = label_value,
+             switch = NULL) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, aes(size = 1/Volume/10000000)),
+        axis.ticks = element_blank(),
+        strip.text.y = element_text(angle = 0),
+        strip.text.x = element_text(angle = 90),
+        panel.spacing = unit(0, "lines"),
+        strip.placement = "outside",
+        strip.background = element_rect(colour = "black", fill = "white"),
+        axis.text.y = element_text(colour="black", hjust = 1),
+        legend.box.just = "left",
+        legend.position =  "none") + 
+  ggtitle("Avant-Pays")
+
 
 
 
