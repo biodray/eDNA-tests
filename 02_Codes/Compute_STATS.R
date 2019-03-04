@@ -1451,6 +1451,25 @@ graph3 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
         strip.background = element_rect(fill="white")
         ) 
 
+graph3
+
+graph3.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
+                                       NomFR %in% SP.presentes) %>% 
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  scale_fill_manual(values = "white", limits = "1") +
+  labs(title= NULL, x =NULL, y = NULL) +
+  guides(fill = FALSE) + 
+  theme_bw()+
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white")
+  ) 
+
+graph3.1
+
 graph4 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
                                        NomFR %in% SP.presentes) %>% 
   ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
@@ -1466,6 +1485,7 @@ graph4 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
         strip.background = element_rect(fill="white")
   ) 
 
+graph4
 
 ggarrange(graph3 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
                   ggtitle("Avant-pays"),
@@ -1484,7 +1504,7 @@ graph5 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                 mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
   ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
-  scale_fill_distiller(palette = "YlGn", direction = 1, na.value="white", limits = c(0,110)) +
+  scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
   #scale_fill_discrete(na.value = "white", guide = "none") +
   geom_point(size = 2,  stroke = 1, col = "gray20") +
   
@@ -1504,13 +1524,15 @@ graph5 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
         strip.background = element_rect(fill="white")
   ) 
 
+
+graph5
 
 graph6 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
                                        NomFR %in% SP.presentes) %>% 
   mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>%# pull(Ncor) %>% max()
   ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
-  scale_fill_distiller(palette = "YlGn", direction = 1, na.value="white", limits = c(0,110)) +
+  scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
   #scale_fill_discrete(na.value = "white", guide = "none") +
   geom_point(size = 2,  stroke = 1, col = "gray20") +
   
@@ -1530,6 +1552,8 @@ graph6 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
         strip.background = element_rect(fill="white")
   ) 
 
+
+graph6
 
 ggarrange(graph5 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
             ggtitle("Avant-pays"),
