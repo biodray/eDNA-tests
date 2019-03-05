@@ -1431,6 +1431,14 @@ Sample.graph %>% group_by(NameAssign.99, NsamplePre) %>%
 
 Sample.graph %>% group_by(NsamplePre) %>% 
   summarise(N = n())
+
+
+# N group
+
+Sample.graph.red %>% filter(Location == "Avant-pays") %>% 
+  group_by(DiffInv) %>% 
+  summarise(N = n())
+
  
 SP.presentes <- Sample.graph.red %>% filter(N >= 1) %>% 
                                  pull(NomFR) %>% unique() %>% as.character()
@@ -1800,6 +1808,7 @@ B <- CompPAtrad.red  %>%
   ) #+ coord_flip()
 
 
+
 ggarrange(A + theme(axis.text.x = element_blank()),
           B + theme(strip.text = element_blank()), 
           nrow=2, align = "v", heights = c(3,1))
@@ -1809,12 +1818,24 @@ SP.PARC <- LacInv1 %>% filter(NomLac %in% Sample.graph.red$NomLac %>% unique(),
                               Presence == 1) %>% 
                         pull(Espece) %>% unique()
 
+SP.PARC.Salvelinus <- SP.PARC[str_detect(SP.PARC, "Salvelinus")]
+
 # Calculer le N cases
 Sample.graph.red  %>% filter(Location == "Avant-pays",
                              NameAssign.99 %in% SP.PARC) %>%
                       group_by(DiffInv) %>% 
                       summarise(N = n(),
                                 Perc = N/546)  
+
+# Calculer le N d'ajout par espèce
+
+Sample.graph.red  %>% filter(Location == "Avant-pays",
+                             NameAssign.99 %in% SP.PARC,
+                             DiffInv == "Present ADNe seul") %>%
+  group_by(NameAssign.99) %>% 
+  summarise(N = n(),
+            Perc = N/26) %>% 
+  arrange(desc(N))
 
 
 Sample.graph.red  %>% filter(Location == "Avant-pays",
@@ -1851,6 +1872,84 @@ Sample.graph.red  %>% filter(Location == "Avant-pays",
   ggtitle("Avant-Pays")
 
 
+graph7.2 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
+                             NameAssign.99 %in% SP.PARC,             
+                             NameAssign.99 %nin% c(SP.PARC.Salvelinus),
+                             NomFR %nin% c("Fouille-roche zébré",
+                                           "Épinoche à neuf épines",
+                                           "Museau noir",
+                                           "Ouitouche",
+                                           "Chabot à tête plate",
+                                           "Fondule barré",
+                                           "Éperlan arc-en-ciel")) %>% #View()
+  ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
+  geom_bin2d(aes(fill = Ncor), col = "gray", size = 0.5) + 
+  geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
+  
+  scale_fill_distiller(palette = "Reds",
+                       direction = 1,
+                       #trans = "log10",  
+                       na.value = "White", limits = c(0,110)) +
+  
+  scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
+  #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
+  
+  labs(title= NULL, x =NULL, y = NULL) +
+  #guides(fill = guide_colourbar(title = "N moyen\nlectures", title.hjust = 0)) +
+  guides(fill = guide_colourbar(title = "Indice d'abondance\nd'ADNe", title.hjust = 0)) +
+  theme_bw ()+
+  facet_grid(. ~ NewBassin, 
+             scale = "free", space = "free", 
+             labeller = label_value,
+             switch = NULL) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, aes(size = 1/Volume/10000000)),
+        axis.ticks = element_blank(),
+        strip.text.y = element_text(angle = 0),
+        strip.text.x = element_text(angle = 90),
+        panel.spacing = unit(0, "lines"),
+        strip.placement = "outside",
+        strip.background = element_rect(colour = "black", fill = "white"),
+        axis.text.y = element_text(colour="black", hjust = 1),
+        legend.position = "none") 
+
+graph7.2
+
+
+Sample.graph.red  %>% 
+  group_by(NewNomLac, Location, NewBassin) %>% 
+  summarise(Volume = mean(Volume/1e-9),
+            Nsample = max(NsampleTot, na.rm=T)) %>% 
+  filter(Location == "Avant-pays") %>% #View()
+  ggplot(aes(x = NewNomLac, y = "Volume", size = Volume, fill = factor(Nsample))) + 
+  geom_bin2d(fill = "White", col = "gray", size = 0.5) + 
+  geom_point(colour = "black", shape = 21) +
+  scale_y_discrete(labels = "Caractéristiques\ndes lacs")+
+  scale_fill_brewer(name = "N échantillons", palette = "Blues", na.value = "White", limits = c(2:7), breaks = c(2:7)) +
+  scale_size(name = "Volume") +
+  #scale_shape_discrete(limits = c("Present ADNe seul", "Present trad seul")) +
+  labs(title= NULL, x =NULL, y = NULL) +
+  theme_bw ()+
+  facet_grid(. ~ NewBassin, 
+             scale = "free", space = "free", 
+             labeller = label_value,
+             switch = NULL) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, aes(size = 1/Volume/10000000)),
+        axis.text.y = element_text(colour="black", hjust = 1, face = "bold"),
+        axis.ticks = element_blank(),
+        strip.text.y = element_text(angle = 0),
+        strip.text.x = element_text(angle = 90),
+        panel.spacing = unit(0, "lines"),
+        strip.placement = "outside",
+        strip.background = element_rect(colour = "black", fill = "white"),
+        panel.background = element_rect(colour = "black", fill = "white"),
+        panel.grid = element_blank(),
+        legend.box.just = "top",
+        legend.box = "horizontal"
+        #legend.position =  "none"
+        #panel.grid.major = element_blanck()),  panel.grid.minor = element_line(colour = NULL)
+  ) #+ coord_flip()
+
+
 Sample.graph.red  %>% filter(Location == "Avant-pays",
                              NameAssign.99 %in% SP.PARC) %>% #View()
   ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
@@ -1884,142 +1983,346 @@ Sample.graph.red  %>% filter(Location == "Avant-pays",
 
 
 
-# Model
 
-DATA.int <- Sample.data %>% select(Assign, Sample, N, NameAssign, Method, Locus) %>% 
-            # Correct the number of observed reads
-            mutate(NameAssign = ifelse(NameAssign == "Salvelinus", "Salvelinus sp.", NameAssign)) %>% 
-            filter(str_detect(Assign, "Teleostei"),
-                   str_detect(NameAssign, " "), 
-                   str_detect(NameAssign, "Gadus morhua") == FALSE,
-                   str_detect(NameAssign, "Salmo salar") == FALSE,
-                   Locus == "12s"
-            ) %>% 
-            select(-Assign) %>% 
-            complete(NameAssign, Sample, Method) %>% 
-            mutate(N = ifelse(is.na(N), 0, N),
-                   PresenceADNe = ifelse(N > 0, 1, 0),
-                   Locus = sapply(str_split(Sample, "_"), `[`, 1),
-                   Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% #View()
-            left_join(DataSeq %>% select(IbisID, Nsite, CatSite, SeqType, NomLac, CorrFiltre, Volume), by = c("Puit" = "IbisID")) %>% 
-            left_join(LacInv1 %>% select(NomLac, Location, Espece, Presence),
-                      by = c("NomLac" = "NomLac", "NameAssign" = "Espece")) %>% 
-            mutate(PresenceADNe = ifelse(is.na (PresenceADNe), 0, PresenceADNe),
-                   DiffInv = ifelse(PresenceADNe == Presence, 
-                                    ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
-                                    ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul"))) %>% 
-            left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
-                      by = c("NameAssign" = "Espece_initial")) %>% 
-            left_join(LacSample %>% select(NomLac, Rotenode, Affluent, Effluent, Bassin, SousBassin, Ordre, Volume),
-                      by = "NomLac") %>% 
-            mutate(NewBassin = ifelse(Bassin == "Isae", paste(Bassin,SousBassin,sep=":"), Bassin),
-                   NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Wapizagonke", "Aticagamac", "Cinq", "Cauche", "Theode", "St-Maurice", "Mattawin", "Isolé")),
-                   NewNomLac = ifelse(is.na(Affluent), paste(NomLac, "*"), NomLac)) %>% 
-            arrange(NewBassin, Ordre) %>% 
-            mutate(NewNomLac = factor(NewNomLac, levels = unique(NewNomLac)), 
-                   Family = factor(Family, levels = c("Salmonidae", "Cyprinidae", "Catostomidae", "Gasterosteidae", "Cottidae", "Fundulidae", "Osmeridae", "Centrarchidae", "Ictaluridae", "Percidae", "Esocidae"))
-            )
+# Modelisation ------------------------------------------------------------
+
+
+Sample.mod.data.int <- Sample.data %>% select(Assign, Sample, N, NameAssign.99, Method, Locus) %>% 
+  
+                                   mutate(NameAssign.99 = ifelse(NameAssign.99 == "Salvelinus", "Salvelinus sp.", 
+                                                                                  ifelse(NameAssign.99 == "Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", "Salvelinus sp.",NameAssign.99))) %>% 
+                                    filter(str_detect(Assign, "Teleostei"),
+                                           str_detect(NameAssign.99, " "), 
+                                           str_detect(NameAssign.99, "Gadus morhua") == FALSE,
+                                           #str_detect(NameAssign.99, "Salmo salar") == FALSE,
+                                           str_detect(NameAssign.99, "Sebaste") == FALSE,         
+                                           Locus %in% c("12s"),
+                                           Method %in% c("ASV")
+                                    )  %>% 
+                                   # Correct the number of observed reads
+                                   
+                                   select(-Assign) %>% 
+                                   complete(NameAssign.99, Sample, Method) %>% 
+                                   mutate(N = ifelse(is.na(N), 0, N),
+                                          PresenceADNe = ifelse(N > 0, 1, 0),
+                                          Locus = sapply(str_split(Sample, "_"), `[`, 1),
+                                          Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% #View()
+                                   left_join(DataSeq %>% select(IbisID, Nsite, CatSite, SeqType, NomLac, CorrFiltre, Volume), by = c("Puit" = "IbisID")) %>% 
+                                   left_join(LacInv1 %>% select(NomLac, Location, Espece, Presence),
+                                             by = c("NomLac" = "NomLac", "NameAssign.99" = "Espece")) %>% 
+                                   mutate(PresenceADNe = ifelse(is.na (PresenceADNe), 0, PresenceADNe),
+                                          DiffInv = ifelse(PresenceADNe == Presence, 
+                                                           ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
+                                                           ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul"))) %>% 
+                                   left_join(REF %>% select(Espece_initial, Class, Order, Family, NomFR),
+                                             by = c("NameAssign.99" = "Espece_initial")) %>% 
+                                   left_join(LacSample %>% select(NomLac, Rotenode, Affluent, Effluent, Bassin, SousBassin, Ordre, Volume, Surface),
+                                             by = "NomLac") %>% 
+                                   mutate(NewBassin = ifelse(Bassin == "Isae", paste(Bassin,SousBassin,sep=":"), Bassin),
+                                          NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Wapizagonke", "Aticagamac", "Cinq", "Cauche", "Theode", "St-Maurice", "Mattawin", "Isolé")),
+                                          NewNomLac = ifelse(is.na(Affluent), paste(NomLac, "*"), NomLac)) %>% 
+                                   arrange(NewBassin, Ordre) %>% 
+                                   mutate(NewNomLac = factor(NewNomLac, levels = unique(NewNomLac)), 
+                                          Family = factor(Family, levels = c("Salmonidae", "Cyprinidae", "Catostomidae", "Gasterosteidae", "Cottidae", "Fundulidae", "Osmeridae", "Centrarchidae", "Ictaluridae", "Percidae", "Esocidae"))
+                                   )
     
-DATA <- DATA.int %>% filter(Method %in% c("ASV"),
+Sample.mod.data  <- Sample.mod.data.int  %>% filter(Method %in% c("ASV"),
                             Location == "Avant-pays",
                             NomFR != "Omble de fontaine",
                             SeqType == "sample") %>% 
                      mutate(DiffInv01 = ifelse(DiffInv %in% c("Absent trad et ADNe", "Present trad et ADNe"), 1,
                                         ifelse(DiffInv %in% c("Present ADNe seul", "Present trad seul"),0,NA)),
-                            CompTrad =  ifelse(DiffInv %in% c("Present trad et ADNe"), 1,
-                                               ifelse(DiffInv %in% c("Present trad seul"),0,NA)), 
+                            #DiffInv01.pres = ifelse(DiffInv %in% c("Present trad et ADNe"), 1,
+                            #                   ifelse(DiffInv %in% c("Present ADNe seul", "Present trad seul"),0,NA)),
+                            #CompTrad =  ifelse(DiffInv %in% c("Present trad et ADNe"), 1,
+                            #                   ifelse(DiffInv %in% c("Present trad seul"),0,NA)), 
                             PresenceADNe = factor(PresenceADNe),
-                            NameAssign = factor(NameAssign),
+                            NameAssign.99 = factor(NameAssign.99),
                             Bassin = factor(Bassin),
                             CatSite = factor(CatSite),
                             VolSample.std = scale(Volume.x),
                             CorrFiltre.std = scale(CorrFiltre),
+                            CorrFiltre.fct = factor(CorrFiltre),
                             VolLac.std = scale(Volume.y)) 
 
-DATA$NomFR %>% unique()
+Sample.mod.data$NomFR %>% unique()
+Sample.mod.data$NomLac %>% unique()
+names(Sample.mod.data)
 
 library(lme4)
 library(effects)
 
-names(DATA)
-
-DATA$NomLac %>% unique()
-
-sum(DATA$DiffInv01) / nrow(DATA)
+sum(Sample.mod.data$DiffInv01) / nrow(Sample.mod.data)
 sum(DATA2$DiffInv01) / nrow(DATA)
 
-m1 <- glmer(DiffInv01 ~ NameAssign + 
-                        VolSample.std + CorrFiltre.std + 
-                        CatSite + VolLac.std + Bassin +
+mSample.m0 <- glmer(DiffInv01 ~ NameAssign.99 + 
+                        VolSample.std +  
+                        CorrFiltre.fct + #I(CorrFiltre.std^2)+
+                        VolLac.std + I(VolLac.std^2)+ 
+                        CatSite + 
+                        Bassin +
                         #CatSite:VolSample.std +  
-                        #NameAssign:CatSite +
-                        #NameAssign:Bassin+
+                        NameAssign.99:CatSite +
+                        NameAssign.99:Bassin+
                   
-                         (1|NomLac) + (1|Sample), 
+                        (1|NomLac) + (1|Sample), 
             family = "binomial", 
             control=glmerControl(optimizer="bobyqa"),
-            data = DATA)
+            data = Sample.mod.data)
 
-m2 <- glmer(DiffInv01 ~ NameAssign + 
-              VolSample.std + 
-              VolLac.std + Bassin +
-              #CatSite:VolSample.std +  
-              #NameAssign:CatSite +
-              #NameAssign:Bassin+
-              
-              (1|NomLac) + (1|Sample), 
-            family = "binomial", 
-            control=glmerControl(optimizer="bobyqa"),
-            data = DATA)
+summary(mSample.m0)
 
-summary(m2)
 
-plot(allEffects(m2))
+plot(allEffects(m1))
+
+
 
 # Maintenant en regroupant les lacs
 
-DATA2 <- DATA %>% group_by(NomLac, NameAssign, VolLac.std, Bassin, Presence) %>% 
-                   summarise(Nsample = length(unique(Sample)),
-                             Npel = length(unique(Sample[CatSite == "PEL"])),
-                             Nriv = length(unique(Sample[CatSite == "RIV"])),
-                             Nread = sum(N),
-                             Nsample1 = length(unique(Sample[N>=1])),
-                             #VolSample.std = sum(VolSample.std),
-                             #CorrFiltre.std = sum(CorrFiltre.std),
-                             PresenceADNe = sum(as.numeric(as.character(PresenceADNe)))
-                             )    %>% 
-group_by() %>% 
-    mutate(PresenceADNe = ifelse(PresenceADNe >=1, 1 ,0),
-         DiffInv = ifelse(PresenceADNe == Presence, 
-                          ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
-                          ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul")),
-         DiffInv01 = ifelse(DiffInv %in% c("Absent trad et ADNe", "Present trad et ADNe"), 1,
-                            ifelse(DiffInv %in% c("Present ADNe seul", "Present trad seul"),0,NA)),
-                             
-         VolLac.std = as.numeric(VolLac.std))  %>% as.data.frame()
+Sample.mod.data2 <- Sample.mod.data %>% group_by(NomLac, NameAssign.99, VolLac.std, Bassin, Presence) %>% 
+                                        summarise(Nsample = length(unique(Sample)),
+                                                  Npel = length(unique(Sample[CatSite == "PEL"])),
+                                                  Nriv = length(unique(Sample[CatSite == "RIV"])),
+                                                  Nread = sum(N),
+                                                  Nsample1 = length(unique(Sample[N>=1])),
+                                                  VolSample = sum(VolSample.std),
+                                                  CorrFiltre = sum(CorrFiltre),
+                                                  PresenceADNe = sum(as.numeric(as.character(PresenceADNe)))
+                                                  )    %>% 
+                                        group_by() %>% 
+                                        mutate(PresenceADNe = ifelse(PresenceADNe >=1, 1 ,0),
+                                               DiffInv = ifelse(PresenceADNe == Presence, 
+                                                                ifelse(PresenceADNe == 0 , "Absent trad et ADNe", "Present trad et ADNe"),
+                                                                ifelse(PresenceADNe == 0, "Present trad seul", "Present ADNe seul")),
+                                               DiffInv01 = ifelse(DiffInv %in% c("Absent trad et ADNe", "Present trad et ADNe"), 1,
+                                                                  ifelse(DiffInv %in% c("Present ADNe seul", "Present trad seul"),0,NA)),
+                                               VolLac.std = as.numeric(VolLac.std),
+                                               Nsample.std = scale(Nsample),
+                                               VolSample.std = scale(VolSample),
 
-str(DATA2)  
+                                               CorrFiltre.std = scale(CorrFiltre))  %>% 
+                                        as.data.frame()
+
+str(Sample.mod.data2)  
         
-m1 <- glmer(DiffInv01 ~ NameAssign + 
-              #CorrFiltre.std + 
-              #VolLac.std + 
-              Bassin +
-              #Nsample + 
-              #Nsample:VolLac.std +
-              #CatSite:VolSample.std +  
-              #NameAssign:CatSite +
-              #NameAssign:Bassin+
-              #Nsample +
-              #NameAssign:Nsample +
-              (1|NomLac), 
-            family = "binomial", 
-            control=glmerControl(optimizer="bobyqa"),
-            data = DATA2)
+mLake.m0 <- glmer(DiffInv01 ~ #NameAssign.99 + 
+                              #VolLac.std + #I(VolLac.std^2) +
+                              #Nsample + #I(Nsample^2) +
+                              #Bassin +
+
+                              #Nsample:VolLac.std +
+                              #CatSite:VolSample.std +  
+                              #NameAssign:CatSite +
+                              #NameAssign:Bassin+
+                              #Nsample +
+                              #NameAssign:Nsample +
+                              (1|NomLac), 
+                 family = "binomial", 
+                 control=glmerControl(optimizer="bobyqa"),
+                 data = Sample.mod.data2)
 
 
-summary(m1)
+mLake.m0 <- glmer(DiffInv01 ~ NameAssign.99 + 
+                    VolLac.std + #I(VolLac.std^2) +
+                    Nsample.std + #I(Nsample^2) +
+                    #Bassin +
+                    factor(Presence) +
+                    NameAssign.99:VolLac.std +
+                    #Nsample:VolLac.std +
+                    #CatSite:VolSample.std +  
+                    #NameAssign:CatSite +
+                    #NameAssign:Bassin+
+                    #Nsample +
+                    #NameAssign:Nsample +
+                    (1|NomLac), 
+                  family = "binomial", 
+                  control=glmerControl(optimizer="bobyqa"),
+                  data = Sample.mod.data2)
 
-plot(allEffects(m1))
+
+
+mLake.m0 <- glmer(PresenceADNe ~ #NameAssign.99 + 
+                    VolLac.std + #I(VolLac.std^2) +
+                    #Nsample.std + #I(Nsample^2) +
+                    VolSample.std +
+                    #CorrFiltre.std +
+                    #VolLac.std:Nsample +
+                    #Bassin +
+                    #factor(Presence) +
+                    #NameAssign.99:VolLac.std +
+                    #Nsample:VolLac.std +
+                    #CatSite:VolSample.std +  
+                    #NameAssign:CatSite +
+                    #NameAssign:Bassin+
+                    #Nsample +
+                    #NameAssign:Nsample +
+                    (1|NomLac), 
+                  family = "binomial", 
+                  control=glmerControl(optimizer="bobyqa"),
+                  data = Sample.mod.data2 %>% filter(NameAssign.99 == "Salvelinus sp.",
+                                                     Presence == 1))
+
+mLake.m0 <- glm(PresenceADNe ~ #NameAssign.99 + 
+                    VolLac.std #+ #I(VolLac.std^2) +
+                    #Nsample.std + #I(Nsample^2) +
+                    #VolSample.std# +
+                    #CorrFiltre.std
+                    #VolLac.std:Nsample +
+                    #Bassin +
+                    #factor(Presence) +
+                    #NameAssign.99:VolLac.std +
+                    #Nsample:VolLac.std +
+                    #CatSite:VolSample.std +  
+                    #NameAssign:CatSite +
+                    #NameAssign:Bassin+
+                    #Nsample +
+                    #NameAssign:Nsample +
+                  #(1|NomLac), 
+                  #family = "binomial", 
+                  #control=glmerControl(optimizer="bobyqa"),
+                  ,data = Sample.mod.data2 %>% filter(NameAssign.99 == "Salvelinus sp.",
+                                                     Presence == 1))
+
+summary(mLake.m0)
+
+plot(allEffects(mLake.m0))
+
+# Modèle pour les CPUE/BPUE
+
+
+
+Sample.mod.data.Etal <- Sample.mod.data %>% filter(NomLac %in% LacInv2$NomLac,
+                                                   NameAssign.99 %in% LacInv2$Espece) %>% 
+                    left_join(LacInv2 %>% filter(Peche == "Verveux",
+                                                 Mesure == "CPUE") %>% 
+                                          select(NomLac, Espece, Value, Density.s), 
+                              by = c("NomLac" = "NomLac", "NameAssign.99" = "Espece")) %>% 
+                         mutate(Density.s.std = scale(Density.s),
+                                Value.std = scale(Value),
+                                Surface.std = scale(Surface),
+                                NameAssign.99 = factor(NameAssign.99),
+                                VolSample.fct = factor(VolSample.std),
+                                VolFiltre = scale(VolSample.std / CorrFiltre))
+
+
+Sample.mod.data.Etal$Bassin %>% unique()
+Sample.mod.data.Etal$NomLac %>% unique()
+
+Sample.mod.data.Etal$Surface.std %>% unique()
+Sample.mod.data.Etal$Value.std %>% unique()
+
+Sample.mod.data.Etal$NameAssign.99 %>% unique()
+Sample.mod.data.Etal %>% group_by(VolFiltre, CatSite) %>% summarise(N = n())
+Sample.mod.data.Etal %>% group_by(CorrFiltre) %>% summarise(N = n())
+
+mEtal01.m0 <- glmer(PresenceADNe ~ 
+                      CorrFiltre.fct +
+                      Surface.std + I(Surface.std ^2)+ 
+                      
+                      CatSite + 
+                      
+                      #Bassin +
+                      Value.std + #I(Value.std^2)+
+                      
+                      Value.std:Surface.std +
+                      Value.std:I(Surface.std^2) +    
+
+                      (1|NomLac) + 
+                      (1|NameAssign.99) + 
+                      (1|Sample), 
+                    family = "binomial", 
+                    control=glmerControl(optimizer="bobyqa"),
+                    data = Sample.mod.data.Etal %>% filter(Value > 0))
+
+
+summary(mEtal01.m0)
+plot(allEffects(mEtal01.m0))
+
+
+coef(mEtal01.m0)
+
+graph7.3 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
+                                         NomLac %in% Sample.mod.data.Etal$NomLac,
+                                         NameAssign.99 %in% Sample.mod.data.Etal$NameAssign.99) %>% #View()
+  ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
+  geom_bin2d(aes(fill = Ncor), col = "gray", size = 0.5) + 
+  geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
+  
+  scale_fill_distiller(palette = "Reds",
+                       direction = 1,
+                       #trans = "log10",  
+                       na.value = "White", limits = c(0,110)) +
+  
+  scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
+  #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
+  
+  labs(title= NULL, x =NULL, y = NULL) +
+  #guides(fill = guide_colourbar(title = "N moyen\nlectures", title.hjust = 0)) +
+  guides(fill = guide_colourbar(title = "Indice d'abondance\nd'ADNe", title.hjust = 0)) +
+  theme_bw ()+
+  facet_grid(. ~ NewBassin, 
+             scale = "free", space = "free", 
+             labeller = label_value,
+             switch = NULL) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, aes(size = 1/Volume/10000000)),
+        axis.ticks = element_blank(),
+        strip.text.y = element_text(angle = 0),
+        strip.text.x = element_text(angle = 90),
+        panel.spacing = unit(0, "lines"),
+        strip.placement = "outside",
+        strip.background = element_rect(colour = "black", fill = "white"),
+        axis.text.y = element_text(colour="black", hjust = 1),
+        legend.position = "none") 
+
+graph7.3
+
+graph7.4 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
+                                         NomLac %in% Sample.mod.data.Etal$NomLac,
+                                         NameAssign.99 %in% Sample.mod.data.Etal$NameAssign.99) %>% 
+  left_join(LacInv2 %>% filter(Peche == "Verveux",
+                               Mesure == "BPUE") %>% 
+              select(NomLac, Espece, Value, Density.s), 
+            by = c("NomLac" = "NomLac", "NameAssign.99" = "Espece")) %>% 
+  filter(Value > 0) %>% 
+  #View()
+  ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
+  geom_bin2d(aes(fill = Ncor), col = "gray", size = 0.5) + 
+  geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
+  
+  scale_fill_distiller(palette = "Reds",
+                       direction = 1,
+                       #trans = "log10",  
+                       na.value = "White", limits = c(0,110)) +
+  
+  scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
+  #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
+  
+  labs(title= NULL, x =NULL, y = NULL) +
+  #guides(fill = guide_colourbar(title = "N moyen\nlectures", title.hjust = 0)) +
+  guides(fill = guide_colourbar(title = "Indice d'abondance\nd'ADNe", title.hjust = 0)) +
+  theme_bw ()+
+  facet_grid(. ~ NewBassin, 
+             scale = "free", space = "free", 
+             labeller = label_value,
+             switch = NULL) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, aes(size = 1/Volume/10000000)),
+        axis.ticks = element_blank(),
+        strip.text.y = element_text(angle = 0),
+        strip.text.x = element_text(angle = 90),
+        panel.spacing = unit(0, "lines"),
+        strip.placement = "outside",
+        strip.background = element_rect(colour = "black", fill = "white"),
+        axis.text.y = element_text(colour="black", hjust = 1),
+        legend.position = "none",
+        panel.background = element_rect(fill = 'darkgray'),
+        panel.grid.major = element_blank()
+        ) 
+
+graph7.4
+
+
+
+
 
 res <- vector()
 
