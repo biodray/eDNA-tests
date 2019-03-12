@@ -34,6 +34,8 @@ list.files(get.value("result.data.path"))
 #load(get.value("ASVtable.data"))
 #load(get.value("OTUtable.data"))
 load(get.value("CORRECTEDtable.data"))
+load(get.value("CORRECTEDtable.data") %>% str_replace("table.data", "table.2x.data"))
+
   ls()
 # Ref
 
@@ -188,10 +190,11 @@ names(TS.ls)
 # Save training set
 TS.ls
 
-save(file = get.value("IDT.TS.data"), 
-     list = c("TS.ls")
-     
-)
+#save(file = get.value("IDT.TS.data"), 
+#     list = c("TS.ls")
+#)
+
+load(get.value("IDT.TS.data"))
 
 
 plot(TS.ls[["All.12s"]])
@@ -393,6 +396,7 @@ for(x in unique(PARAM$TAB)){
 
   TAB  <- get(x)
   TAB2 <- get(paste(x, "cor", sep= "."))
+  TAB3 <- get(paste(x, "cor.2x", sep= "."))
   TAXO <- TAXO.final[[x]]
   
   nrow(TAB) == nrow(TAXO)
@@ -406,9 +410,13 @@ for(x in unique(PARAM$TAB)){
            full_join(TAXO) %>% 
            select(-SEQ) 
   
+  NEW3 <- TAB3 %>% full_join(TAB %>% select(ID, SEQ)) %>% 
+           full_join(TAXO) %>% 
+           select(-SEQ) 
+  
   assign(paste(x, "wTAXO", sep = "."), NEW1)
   assign(paste(x, "cor", "wTAXO", sep = "."), NEW2)
-
+  assign(paste(x, "cor.2x", "wTAXO", sep = "."), NEW2)
 }
 
 
