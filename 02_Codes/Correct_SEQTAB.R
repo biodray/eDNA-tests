@@ -348,7 +348,39 @@ correct.reads <- function(tab){
   return(DATA)  
   
 }  
+
+# 2 times correction
+
   
+correct.reads.2x <- function(tab){ 
+  
+  Sample <- names(tab) %>% str_subset("Sample")
+  Tnega    <- names(tab) %>% str_subset("Tneg")
+  Tfield  <- c(names(tab) %>% str_subset("T0"),
+               names(tab) %>% str_subset("T1"))
+  Mix    <- names(tab) %>% str_subset("Mix")
+  
+  # Jeux de données liés
+  
+  DATA <- tab %>% select("ID", Sample, Tnega, Tfield, Mix) %>%
+    gather(Sample, Tnega, Tfield, Mix, key = "sample", value = "N") %>% 
+    mutate(IbisID = sapply(str_split(sample, "_p"),`[`,2) %>% str_remove("_R1") %>% str_remove("_R2") %>% str_replace("-", ".")) %>%  
+    left_join(DataSeq %>% select(IbisID, SampleID, SeqType, Tneg, Temoins), by = "IbisID") 
+  
+  DATA.Tneg   <- DATA %>% filter(sample %in% c(Tnega)) %>% select(ID, N, SampleID)
+  DATA.Tfield <- DATA %>% filter(sample %in% c(Tfield)) %>% select(ID, N, SampleID)
+  
+  DATA <- DATA %>% left_join(DATA.Tneg, by = c("ID" = "ID", "Tneg" = "SampleID" ), suffix = c("", ".Tneg")) %>% 
+    left_join(DATA.Tfield, by = c("ID" = "ID", "Temoins" = "SampleID" ), suffix = c("", ".Tfield")) %>% 
+    mutate(Ncor = ifelse(N.Tfield - N.Tneg >0, N - 2*(N.Tneg + (N.Tfield - N.Tneg)), N - 2*N.Tneg),
+           Ncor = ifelse(Ncor < 0, 0 , Ncor)) %>% 
+    filter(SeqType %in% c("sample", "dup.sample")) %>%  
+    select(ID, sample, Ncor) %>%
+    spread(key = sample, value = Ncor)
+  
+  return(DATA)  
+  
+}  
 
 ASVtab.12s.cor     <- correct.reads(ASVtab.12s)  
 ASVtab.cytB.R1.cor <- correct.reads(ASVtab.cytB.R1)  
@@ -357,6 +389,16 @@ ASVtab.cytB.R2.cor <- correct.reads(ASVtab.cytB.R2)
 OTUtab.12s.cor     <- correct.reads(OTUtab.12s)  
 OTUtab.cytB.R1.cor <- correct.reads(OTUtab.cytB.R1)  
 OTUtab.cytB.R2.cor <- correct.reads(OTUtab.cytB.R2) 
+
+
+ASVtab.12s.cor.2x     <- correct.reads.2x(ASVtab.12s)  
+ASVtab.cytB.R1.cor.2x <- correct.reads.2x(ASVtab.cytB.R1)  
+ASVtab.cytB.R2.cor.2x <- correct.reads.2x(ASVtab.cytB.R2) 
+
+OTUtab.12s.cor.2x     <- correct.reads.2x(OTUtab.12s)  
+OTUtab.cytB.R1.cor.2x <- correct.reads.2x(OTUtab.cytB.R1)  
+OTUtab.cytB.R2.cor.2x <- correct.reads.2x(OTUtab.cytB.R2) 
+
 
 # Representation graphique
 
@@ -390,9 +432,10 @@ dev.off()
 #save(file = get.value("CORRECTEDtable.data"), 
 #     list = ls(pattern = "tab.")[-13]) # Pour enlever "SEQtable.df" 
 
+#save(file = get.value("CORRECTEDtable.data") %>% str_replace("table.data", "table.2x.data"), 
+#     list = ls(pattern = "cor.2x")) # Pour enlever "SEQtable.df" 
 
 
-# The code for mock community should be on another space? Maybe only after assigning species
 
 
 
