@@ -128,6 +128,7 @@ ls() %>% str_subset("byID.SP")
 load(get.value("Blast99.data"))
 
 
+#save(file = "Compute_STATS.data", list = ls())
 
 
 # Basic stats -------------------------------------------------------------
@@ -1222,13 +1223,11 @@ Sample.data <- data.frame(Assign = character(),
                           NomLac = character(),
                           Data = character())
 
+#for(x in ls() %>% str_subset(".cor.2x.wTAXO")){ # For stringent correction
 for(x in ls() %>% str_subset(".cor.wTAXO")){
-
   print(x)
   
-DATA <-
-  
-  get(x) %>% gather(names(.) %>% str_subset("Sample"), key = Sample, value = N) %>% 
+DATA <- get(x) %>% gather(names(.) %>% str_subset("Sample"), key = Sample, value = N) %>% 
         group_by(Assign, ID, Sample) %>% 
         summarise(N = sum(N)) %>% 
         
@@ -1240,7 +1239,7 @@ DATA <-
           left_join(Blast99) %>% 
           left_join(DataSeq %>% select(IbisID, Nsite, CatSite, SeqType, NomLac, CorrFiltre, Volume), by = c("Puit" = "IbisID")) %>% 
           filter(SeqType == "sample") %>% 
-        mutate(Data = x %>% str_remove(".cor.wTAXO"),
+        mutate(Data = x %>% str_remove(".cor.wTAXO") %>% str_remove(".cor.2x.wTAXO"),
                Cat = CatSite)   
   
   
