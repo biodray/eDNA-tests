@@ -416,7 +416,7 @@ for(x in unique(PARAM$TAB)){
   
   assign(paste(x, "wTAXO", sep = "."), NEW1)
   assign(paste(x, "cor", "wTAXO", sep = "."), NEW2)
-  assign(paste(x, "cor.2x", "wTAXO", sep = "."), NEW2)
+  assign(paste(x, "cor.2x", "wTAXO", sep = "."), NEW3)
 }
 
 
