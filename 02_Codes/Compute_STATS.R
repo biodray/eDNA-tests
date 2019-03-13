@@ -90,11 +90,22 @@ Mock.dat
 # Ref sequences
 
 # Fichier reference taxo - la boucle permet de verifier si le fichier a bien ete lu
-REF <- read_csv(get.value("RefTAXO"), locale = locale(encoding = "ISO-8859-1"))
-if(ncol(REF) == 1 ) {
-  REF <- read_csv2(get.value("RefTAXO"), locale = locale(encoding = "ISO-8859-1"))
+
+# Get the server version if connected, otherwise get a local version
+if(file.exists(get.value("RefTAXO"))){
+  REF <- read_csv(get.value("RefTAXO"), locale = locale(encoding = "ISO-8859-1"))
+  if(ncol(REF) == 1 ) {
+    REF <- read_csv2(get.value("RefTAXO"), locale = locale(encoding = "ISO-8859-1"))
+  }
+} else{
+  REF <- read_csv("00_Data/00_FileInfos/Reference_taxonomie.csv", locale = locale(encoding = "ISO-8859-1"))
+  if(ncol(REF) == 1 ) {
+    REF <- read_csv2(get.value("RefTAXO"), locale = locale(encoding = "ISO-8859-1"))
+  }
 }
+
 REF
+
 
 
 # Summary by SP
@@ -129,7 +140,7 @@ load(get.value("Blast99.data"))
 
 
 #save(file = "Compute_STATS.data", list = ls())
-
+#load("Compute_STATS.data")
 
 # Basic stats -------------------------------------------------------------
 
@@ -1255,6 +1266,13 @@ Sample.data <- rbind(Sample.data, DATA)
  
 }  
 
+# When it doesn't work, try this
+#for(y in 1:nrow(Sample.data)){
+#  Sample.data$NameAssign[y] <- sapply(str_split(Sample.data[y,"Assign"], ";"),`[`, Sample.data[y,"Level"] + 1)
+#  
+#}
+
+unique(Sample.data$NameAssign)
 
 # Try to do something with blast99
 
@@ -1290,6 +1308,20 @@ Sample.data %>% filter(Data == "ASVtab.12s") %>%
   spread(Cat, Ntot, fill = 0) %>% 
   mutate(N = PEL + RIV) %>% View()
 
+Sample.data %>% filter(Data == "ASVtab.12s") %>% 
+  group_by(Taxo) %>% 
+  summarise(N = sum(N),
+            Perc = N / sum(.$N))
+
+
+# Mean sample by lake
+Sample.data %>% filter(Data == "ASVtab.12s") %>% 
+  group_by(Location, NomLac, Cat) %>% 
+  summarise(Ntot = length(unique(Sample))) %>% 
+  spread(Cat, Ntot, fill = 0) %>% 
+  mutate(N = PEL + RIV) %>%
+  group_by() %>% 
+  summarise(Mean = mean(N))
 
 
 # Graph of what was done
@@ -1509,17 +1541,62 @@ graph3.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
 graph3.1
 
 
+graph3.2a <- Sample.graph.red  %>% filter(Location == "Avant-pays",
+                                       NomFR %in% SP.presentes,
+                                       N >= 10) %>% 
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  scale_fill_manual(values = "limegreen", limits = "1") +
+  labs(title= NULL, x =NULL, y = NULL) +
+  guides(fill = FALSE) + 
+  theme_bw()+
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white")
+  ) 
 
-ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.AV.ASV.12S.png"),
+graph3.2a
+
+graph3.2b <- Sample.graph.red  %>% filter(Location == "Avant-pays",
+                                          NomFR %in% SP.presentes,
+                                          N >= 100) %>% 
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  scale_fill_manual(values = "limegreen", limits = "1") +
+  labs(title= NULL, x =NULL, y = NULL) +
+  guides(fill = FALSE) + 
+  theme_bw()+
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white")
+  ) 
+
+graph3.2b
+
+
+ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.AvP.ASV.12S.png"),
        width = 6.5, height = 5,
        plot = graph3
 )
 
-ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.AV.ASV.12S.vide.png"),
+ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.AvP.ASV.12S.vide.png"),
        width = 6.5, height = 5,
        plot = graph3.1
 )
 
+ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.AvP.ASV.12S.min10.png"),
+       width = 6.5, height = 5,
+       plot = graph3.2a
+)
+
+ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.AvP.ASV.12S.min100.png"),
+       width = 6.5, height = 5,
+       plot = graph3.2b
+)
 
 
 graph4 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
@@ -1943,20 +2020,20 @@ Sample.mod.data.int <- Sample.data %>% select(Assign, Sample, N, NameAssign.99, 
                                            str_detect(NameAssign.99, " "), 
                                            str_detect(NameAssign.99, "Gadus morhua") == FALSE,
                                            #str_detect(NameAssign.99, "Salmo salar") == FALSE,
-                                           str_detect(NameAssign.99, "Sebaste") == FALSE,         
-                                           Locus %in% c("12s"),
-                                           Method %in% c("ASV")
+                                           str_detect(NameAssign.99, "Sebaste") == FALSE         
+                                           #Locus %in% c("12s"),
+                                           #Method %in% c("ASV")
                                     )  %>% 
                                    # Correct the number of observed reads
                                    
-                                   select(NameAssign.99, Sample, N) %>% #View()
-                                   group_by(NameAssign.99, Sample) %>% 
+                                   select(NameAssign.99, Sample, Method, Locus, N) %>% #View()
+                                   group_by(NameAssign.99, Sample, Method, Locus) %>% 
                                   summarise(N = sum(N)) %>%    
                                    complete(NameAssign.99, Sample) %>% 
                                    group_by() %>% 
                                     mutate(N = ifelse(is.na(N), 0, N),
                                           PresenceADNe = ifelse(N > 0, 1, 0),
-                                          Locus = sapply(str_split(Sample, "_"), `[`, 1),
+                                          #Locus = sapply(str_split(Sample, "_"), `[`, 1),
                                           Puit = sapply(str_split(Sample, "_"), `[`, 5) %>% str_remove("p")) %>% #View()
                                    left_join(DataSeq %>% select(IbisID, Nsite, CatSite, SeqType, NomLac, CorrFiltre, Volume), by = c("Puit" = "IbisID")) %>% 
                                    left_join(LacInv1 %>% select(NomLac, Location, Espece, Presence),
@@ -1976,10 +2053,18 @@ Sample.mod.data.int <- Sample.data %>% select(Assign, Sample, N, NameAssign.99, 
                                    mutate(NewNomLac = factor(NewNomLac, levels = unique(NewNomLac)), 
                                           Family = factor(Family, levels = c("Salmonidae", "Cyprinidae", "Catostomidae", "Gasterosteidae", "Cottidae", "Fundulidae", "Osmeridae", "Centrarchidae", "Ictaluridae", "Percidae", "Esocidae"))
                                    )
-    
-Sample.mod.data  <- Sample.mod.data.int  %>% filter(#Method %in% c("ASV"),
+ 
+Sample.mod.data.int$Locus %>% unique()
+   
+Sample.mod.data  <- bind_rows(Sample.mod.data.int %>% filter(Method %in% c("ASV", NA),
+                                                      Locus %in% c("12s", NA),
+                                                      NomFR != "Omble de fontaine"),
+                              Sample.mod.data.int %>% filter(Method == "ASV",
+                                                      Locus == "cytB.R1",
+                                                      NomFR == "Omble de fontaine")) %>% 
+                                filter(#Method %in% c("ASV"),
                             Location == "Avant-pays",
-                            NomFR != "Omble de fontaine",
+                            #NomFR != "Omble de fontaine",
                             SeqType == "sample") %>% 
                      mutate(DiffInv01 = ifelse(DiffInv %in% c("Absent trad et ADNe", "Present trad et ADNe"), 1,
                                         ifelse(DiffInv %in% c("Present ADNe seul", "Present trad seul"),0,NA)),
@@ -2140,8 +2225,6 @@ plot(allEffects(mLake.m0))
 
 # Modèle pour les CPUE/BPUE
 
-
-
 Sample.mod.data.Etal <- Sample.mod.data %>% filter(NomLac %in% LacInv2$NomLac,
                                                    NameAssign.99 %in% LacInv2$Espece) %>% 
                     left_join(LacInv2 %>% filter(Peche == "Verveux",
@@ -2256,8 +2339,6 @@ lines(x = colnames(resp.m1$effect), y = resp.m1$upper[2,], col = "blue", lty = "
 plot(x = colnames(resp.m1$effect), y = resp.m1$effect[2,])
 
 
-
-
 graph7.3 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                          NomLac %in% Sample.mod.data.Etal$NomLac,
                                          NameAssign.99 %in% Sample.mod.data.Etal$NameAssign.99) %>% #View()
@@ -2350,7 +2431,7 @@ graph7.4.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
   ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
   geom_bin2d(aes(fill = DiffInv), col = "gray", size = 0.5) + 
   #geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
-  #  
+    
   scale_fill_manual(values = c("white", "white"),
                     limits = c("Present trad seul","Present trad et ADNe")) +
   
@@ -2628,6 +2709,7 @@ Comp.RivPel %>% ggplot(aes(P.rel, R.rel, col = Famille)) +
 
 # Correlation with inventaire -----------------------------------------------------
 
+# Etalonnage
 
 graph8 <- Sample.mod.data.Etal %>%  mutate(N = ifelse(is.na(N), 0, N),
                                  Nlog = ifelse(N == 0 , NA, 
@@ -2639,7 +2721,7 @@ graph8 <- Sample.mod.data.Etal %>%  mutate(N = ifelse(is.na(N), 0, N),
   ggplot(aes(x = Value, y = Nlog.cor, col = CatSite)) +
   geom_smooth(method = "lm", se = FALSE) +                              
   geom_count(show.legend = F) + 
-  stat_cor(method = "spearman", cex= 3.5) +
+  #stat_cor(method = "spearman", cex= 3.5) +
                                 facet_wrap(~ NomFR, scale = "free", nrow=2) +
   scale_colour_manual(values = c("blue","red"), name = "Type d'échantillon", limits = c("RIV", "PEL"), labels = c("Riverain", "Pélagique")) +
   #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
@@ -2659,6 +2741,57 @@ ggsave(filename = file.path(get.value("result.FINAL"), "CompAbondance.ASV.12S.pn
        width = 7, height = 5,
        plot = graph8
 )
+
+
+# Pêche
+library(GGally)
+ggpairs( LacPeche %>% spread(Mesure, Value) %>% select(BPUEhm, BPUEjp, CPUEhm, CPUEjp))
+
+LacPeche$NomLac %>% unique()
+
+Sample.mod.data.Peche <- Sample.mod.data %>% filter(NomLac %in% LacPeche$NomLac,
+                                                    NameAssign.99 %in% c(LacPeche$Espece %>% unique, "Salvelinus sp.")) %>%
+   mutate(NameAssign.99.join = NameAssign.99,
+          NameAssign.99.join = str_replace(NameAssign.99.join, "Salvelinus sp.", "Salvelinus fontinalis")) %>% 
+  left_join(LacPeche %>% filter(Mesure == "BPUEjp") %>% 
+              select(NomLac, Espece, Value), 
+            by = c("NomLac" = "NomLac", "NameAssign.99.join" = "Espece")) %>% 
+  mutate(Value = ifelse(is.na(Value), 0, Value))
+
+
+graph9 <- Sample.mod.data.Peche %>%  mutate(N = ifelse(is.na(N), 0, N),
+                                           Nlog = ifelse(N == 0 , NA, 
+                                                         ifelse(N == 1, 0.5, log2(N))),
+                                           Nlog.cor = ifelse(is.na(Nlog), 0, Nlog / CorrFiltre / Volume.x * 1000)) %>% 
+  #group_by(NomFR, CatSite, NomLac)%>%
+  #summarise(Nlog.cor = mean(Nlog.cor),
+  #          Value = mean(Value)) %>% 
+  filter(NomFR != "Achigan à petite bouche",
+         NomLac %nin% c("Giron", "Parker", "Peche (a la)"),
+         Nlog.cor > 0
+    ) %>% #View()
+  ggplot(aes(x = Value, y = Nlog.cor, col = CatSite)) +
+  geom_smooth(method = "lm", se = FALSE) +                              
+  geom_count(show.legend = F) + 
+  #stat_cor(method = "spearman", cex= 3.5) +
+  facet_wrap(~ NomFR, nrow=1) +
+  scale_colour_manual(values = c("blue","red"), name = "Type d'échantillon", limits = c("RIV", "PEL"), labels = c("Riverain", "Pélagique")) +
+  #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
+  
+  labs(title= NULL, x = "BPUE (heures moyennes)", y = "Indice d'abondance d'ADNe") +
+  #guides(fill = guide_colourbar(title = "N moyen\nlectures", title.hjust = 0)) +
+  guides(fill = guide_colourbar(title = "Indice d'abondance\nd'ADNe", title.hjust = 0)) +
+  
+  theme_bw() + theme(strip.background = element_rect(fill="white"),
+                     legend.position = "bottom")
+
+graph9
+
+ggsave(filename = file.path(get.value("result.FINAL"), "CompPeche.ASV.12S.png"),
+       width = 7, height = 5,
+       plot = graph9
+)
+
 
 RES.COR.INV2 <- expand.grid(Espece = c( "Ameiurus nebulosus",
                                         "Ambloplites rupestris",
