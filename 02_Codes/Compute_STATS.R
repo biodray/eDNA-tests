@@ -877,8 +877,10 @@ Mock.graph.data <- data.frame(Assign = character(),
                               Name.level = character(),
                               Data = character())
 
+LS <- ls() %>% str_subset(".wTAXO") %>% str_remove(".cor") %>% unique()
+LS[LS %>% str_detect("2x")==F]
 
-for(x in ls() %>% str_subset(".wTAXO") %>% str_remove(".cor") %>% unique()){
+for(x in LS[LS %>% str_detect("2x")==F]){
 
 DATA <- get(x) %>% mutate(Level = str_count(Assign, ";")) %>% 
                      #filter(Level %in% c(5:6),
@@ -1452,14 +1454,14 @@ Sample.graph.red <- bind_rows(Sample.graph %>% filter(Method %in% c("ASV", NA),
                                                             "Meunier noir",
                                                             "Perchaude", "Doré jaune", "Fouille-roche zébré",
                                                             "Achigan à petite bouche", "Crapet de roche", "Crapet-soleil",
-                                                              "Épinoche à cinq épines", "Épinoche à neuf épines",
+                                                            "Épinoche à cinq épines", "Épinoche à neuf épines",
                                                             "Mulet à cornes", "Mulet perlé", "Tête-de-boule", "Ventre rouge du nord", "Méné à nageoires rouges *", "Méné jaune", "Museau noir", "Naseux des rapides", "Ouitouche",
                                                             
                                                             "Chabot à tête plate",
                                                             "Fondule barré",
                                                             "Éperlan arc-en-ciel",
-                                                            "Grand brochet")))
-                       )
+                                                            "Grand brochet"))))
+
 
 
 # N moyen d'espèce par lac (compte les 0) 
@@ -1501,18 +1503,21 @@ Sample.graph.red %>% filter(Location == "Avant-pays") %>%
 
  
 SP.presentes <- Sample.graph.red %>% filter(N >= 1) %>% 
-                                 pull(NomFR) %>% unique() %>% as.character()
+                                   pull(NomFR) %>% unique() %>% as.character()
+
+
 
 
 graph3 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                        NomFR %in% SP.presentes) %>% 
-    ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   scale_fill_manual(values = "limegreen", limits = "1") +
   labs(title= NULL, x =NULL, y = NULL) +
   guides(fill = FALSE) + 
-  theme_bw()+
+  theme_bw()+ 
   facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+ j
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
         axis.ticks.y = element_blank(),
         strip.text.x = element_text(angle = 90),
@@ -1578,6 +1583,31 @@ graph3.2b <- Sample.graph.red  %>% filter(Location == "Avant-pays",
 graph3.2b
 
 
+graph3.3 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
+                                         NomFR %nin% c("Méné jaune", "Crapet-soleil", "Doré jaune", "Grand brochet")) %>% #View()
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  scale_fill_manual(values = "limegreen", limits = "1") +
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+
+  scale_shape_manual(values = 1, limits = "1", guide = "none") +
+  
+  labs(title= NULL, x =NULL, y = NULL) +
+  guides(fill = FALSE) + 
+  theme_bw()+ 
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+
+theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+      axis.ticks.y = element_blank(),
+      strip.text.x = element_text(angle = 90),
+      strip.background = element_rect(fill="white")
+) 
+
+graph3.3
+
+  
+
+
 ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.AvP.ASV.12S.png"),
        width = 6.5, height = 5,
        plot = graph3
@@ -1596,6 +1626,11 @@ ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.AvP.ASV.
 ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.AvP.ASV.12S.min100.png"),
        width = 6.5, height = 5,
        plot = graph3.2b
+)
+
+ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.COmpTrad.png"),
+       width = 10, height = 8,
+       plot = graph3.3
 )
 
 
