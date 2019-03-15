@@ -1326,11 +1326,17 @@ Sample.data %>% filter(Data == "ASVtab.12s") %>%
   summarise(Mean = mean(N))
 
 
+# Potential false positive 
+Sample.data %>% filter(Data == "ASVtab.12s") %>% 
+  group_by(NameAssign.99) %>%
+  summarise(Nech = length(unique(Sample[N>=1])),
+            Nlac = length(unique(NomLac[N>=1]))) %>% View()
+
 # Graph of what was done
 
 Sample.data %>% filter(#str_detect(Assign, "Teleostei") == F,
-                   str_detect(Assign, "Gadidae") == F,
-                   str_detect(Assign, "Sebaste") == F,
+                   #str_detect(Assign, "Gadidae") == F,
+                   #str_detect(Assign, "Sebaste") == F,
                    Locus %in% c("12s"),
                    Method %in% c("ASV")) %>%
   group_by(NomLac, Locus, Method, NameAssign, NameAssign.99, Taxo, Location) %>% 
@@ -1385,6 +1391,7 @@ Sample.data %>% filter(#str_detect(Assign, "Teleostei") == F,
 
 # Proportion des échantilllons avec l'une ou l'autre des espèces
 
+
 Sample.graph <- Sample.data %>% mutate(NameAssign.99 = ifelse(NameAssign.99 == "Salvelinus", "Salvelinus sp.", 
                                                               ifelse(NameAssign.99 == "Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", "Salvelinus sp.",NameAssign.99))) %>% 
                                 filter(str_detect(Assign, "Teleostei"),
@@ -1436,7 +1443,10 @@ Sample.graph <- Sample.data %>% mutate(NameAssign.99 = ifelse(NameAssign.99 == "
                                           by = "NomLac") %>% 
                                 mutate(NewBassin = ifelse(Bassin == "Isae", paste(Bassin,SousBassin,sep=":"), Bassin),
                                        NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Wapizagonke", "Aticagamac", "Cinq", "Cauche", "Theode", "St-Maurice", "Mattawin", "Isolé")),
-                                       NewNomLac = ifelse(is.na(Affluent), paste(NomLac, "*"), NomLac)) %>% 
+                                       NewNomLac = ifelse(is.na(Affluent), paste(NomLac, "*"), NomLac),
+                                       Ordre = factor(Ordre),
+                                       NewNomLac = factor(NewNomLac, levels=unique(NewNomLac[order(NewBassin, Ordre)]))
+                                ) %>% 
                                 arrange(NewBassin, Ordre)  
 
 # Keep only
@@ -1461,6 +1471,8 @@ Sample.graph.red <- bind_rows(Sample.graph %>% filter(Method %in% c("ASV", NA),
                                                             "Fondule barré",
                                                             "Éperlan arc-en-ciel",
                                                             "Grand brochet"))))
+
+
 
 
 
@@ -1513,11 +1525,14 @@ graph3 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
   ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   scale_fill_manual(values = "limegreen", limits = "1") +
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+  
   labs(title= NULL, x =NULL, y = NULL) +
   guides(fill = FALSE) + 
   theme_bw()+ 
   facet_grid(. ~ NewBassin, scale = "free", space = "free") +
- j
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
         axis.ticks.y = element_blank(),
         strip.text.x = element_text(angle = 90),
@@ -1528,11 +1543,16 @@ graph3
 
 
 
+
 graph3.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                        NomFR %in% SP.presentes) %>% 
   ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   scale_fill_manual(values = "white", limits = "1") +
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+  
   labs(title= NULL, x =NULL, y = NULL) +
   guides(fill = FALSE) + 
   theme_bw()+
@@ -1547,11 +1567,14 @@ graph3.1
 
 
 graph3.2a <- Sample.graph.red  %>% filter(Location == "Avant-pays",
-                                       NomFR %in% SP.presentes,
-                                       N >= 10) %>% 
+                                       NomFR %in% SP.presentes) %>% 
+                                      mutate(PresenceADNe = ifelse(N >= 10,1,0)) %>% 
   ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   scale_fill_manual(values = "limegreen", limits = "1") +
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
   labs(title= NULL, x =NULL, y = NULL) +
   guides(fill = FALSE) + 
   theme_bw()+
@@ -1565,11 +1588,14 @@ graph3.2a <- Sample.graph.red  %>% filter(Location == "Avant-pays",
 graph3.2a
 
 graph3.2b <- Sample.graph.red  %>% filter(Location == "Avant-pays",
-                                          NomFR %in% SP.presentes,
-                                          N >= 100) %>% 
+                                          NomFR %in% SP.presentes) %>% 
+  mutate(PresenceADNe = ifelse(N >= 100,1,0)) %>% 
   ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   scale_fill_manual(values = "limegreen", limits = "1") +
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
   labs(title= NULL, x =NULL, y = NULL) +
   guides(fill = FALSE) + 
   theme_bw()+
@@ -1590,9 +1616,9 @@ graph3.3 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
   scale_fill_manual(values = "limegreen", limits = "1") +
   geom_point(aes(shape = factor(Presence)), col = "gray20") +
 
-  scale_shape_manual(values = 1, limits = "1", guide = "none") +
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
   
-  labs(title= NULL, x =NULL, y = NULL) +
+  labs(title= "Avant-Pays", x =NULL, y = NULL) +
   guides(fill = FALSE) + 
   theme_bw()+ 
   facet_grid(. ~ NewBassin, scale = "free", space = "free") +
@@ -1652,6 +1678,34 @@ graph4 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
 graph4
 
 
+graph4.3 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
+                                         NomFR %nin% c("Méné jaune", "Crapet-soleil", "Doré jaune", "Grand brochet")) %>% #View()
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  scale_fill_manual(values = "limegreen", limits = "1") +
+ # geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+  
+  labs(title= "Arrière-Pays", x =NULL, y = NULL) +
+  guides(fill = FALSE) + 
+  theme_bw()+ 
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+  
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white")
+  ) 
+
+graph4.3
+
+ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.CompTrad2.png"),
+       width = 10, height = 8,
+       plot = graph4.3
+)
+
+
 ggsave(filename = file.path(get.value("result.FINAL"), "PresenteAbsence.ArrP.ASV.12S.png"),
        width = 6.5, height = 5,
        plot = graph4
@@ -1685,7 +1739,7 @@ graph5 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
   #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
   #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
   labs(title= NULL, x =NULL, y = NULL) +
-  #guides(fill = FALSE) + 
+  guides(fill = FALSE) + 
   theme_bw()+
   facet_grid(. ~ NewBassin, scale = "free", space = "free") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -1724,6 +1778,12 @@ graph6 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
 
 
 graph6
+
+ggsave(filename = file.path(get.value("result.FINAL"), "Abondance.AvP.ASV.12S.png"),
+       width = 6.5, height = 5,
+       plot = graph5
+)
+
 
 ggsave(filename = file.path(get.value("result.FINAL"), "Abondance.ArrP.ASV.12S.png"),
        width = 6.5, height = 5,
@@ -2376,7 +2436,8 @@ plot(x = colnames(resp.m1$effect), y = resp.m1$effect[2,])
 
 graph7.3 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                          NomLac %in% Sample.mod.data.Etal$NomLac,
-                                         NameAssign.99 %in% Sample.mod.data.Etal$NameAssign.99) %>% #View()
+                                         NameAssign.99 %in% Sample.mod.data.Etal$NameAssign.99,
+                                         NomFR != "Omble de fontaine *") %>% #View()
   ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
   geom_bin2d(aes(fill = Ncor), col = "gray", size = 0.5) + 
   geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
@@ -2411,7 +2472,8 @@ graph7.3
 
 graph7.4 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                          NomLac %in% Sample.mod.data.Etal$NomLac,
-                                         NameAssign.99 %in% Sample.mod.data.Etal$NameAssign.99) %>% 
+                                         NameAssign.99 %in% Sample.mod.data.Etal$NameAssign.99,
+                                         NomFR != "Omble de fontaine *") %>% 
   left_join(LacInv2 %>% filter(Peche == "Verveux",
                                Mesure == "BPUE") %>% 
               select(NomLac, Espece, Value, Density.s), 
@@ -2455,7 +2517,8 @@ graph7.4
 
 graph7.4.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                          NomLac %in% Sample.mod.data.Etal$NomLac,
-                                         NameAssign.99 %in% Sample.mod.data.Etal$NameAssign.99) %>% 
+                                         NameAssign.99 %in% Sample.mod.data.Etal$NameAssign.99,
+                                         NomFR != "Omble de fontaine *") %>% 
   #mutate(Ncor = 1) %>% 
   left_join(LacInv2 %>% filter(Peche == "Verveux",
                                Mesure == "BPUE") %>% 
@@ -2496,6 +2559,10 @@ graph7.4.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
 
 graph7.4.1
 
+ggsave(filename = file.path(get.value("result.FINAL"), "CompEtal.FauxPositif.AV.ASV.12S.png"),
+       width = 5, height = 5,
+       plot = graph7.3
+)
 
 ggsave(filename = file.path(get.value("result.FINAL"), "CompEtal.AV.ASV.12S.png"),
        width = 5, height = 5,
@@ -2791,7 +2858,8 @@ Sample.mod.data.Peche <- Sample.mod.data %>% filter(NomLac %in% LacPeche$NomLac,
   left_join(LacPeche %>% filter(Mesure == "BPUEjp") %>% 
               select(NomLac, Espece, Value), 
             by = c("NomLac" = "NomLac", "NameAssign.99.join" = "Espece")) %>% 
-  mutate(Value = ifelse(is.na(Value), 0, Value))
+  mutate(Value = ifelse(is.na(Value), 0, Value),
+         Marker = ifelse(Locus == "12s", "12S - Salvelinus sp.", "cytB - Omble de fontaine"))
 
 
 graph9 <- Sample.mod.data.Peche %>%  mutate(N = ifelse(is.na(N), 0, N),
@@ -2809,7 +2877,7 @@ graph9 <- Sample.mod.data.Peche %>%  mutate(N = ifelse(is.na(N), 0, N),
   geom_smooth(method = "lm", se = FALSE) +                              
   geom_count(show.legend = F) + 
   #stat_cor(method = "spearman", cex= 3.5) +
-  facet_wrap(~ NomFR, nrow=1) +
+  facet_wrap(~ Marker, nrow=1) +
   scale_colour_manual(values = c("blue","red"), name = "Type d'échantillon", limits = c("RIV", "PEL"), labels = c("Riverain", "Pélagique")) +
   #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
   
