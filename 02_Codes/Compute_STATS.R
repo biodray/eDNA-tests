@@ -71,11 +71,6 @@ LacPeche <- LacPeche %>% gather(names(.) %>% str_subset("PUE"), key = "Mesure", 
 
 LacInv1 %>% filter(Presence == 0) %>% pull(Espece) %>% unique()
 
-ggarrange(LacPeche %>% ggplot(aes(x = CPUEjp, y = CPUEhm, col = Espece))+ geom_point(size = 2) +theme_classic(),
-          LacPeche %>% ggplot(aes(x = BPUEjp, y = BPUEhm, col = Espece))+ geom_point(size = 2) +theme_classic(),
-          LacPeche %>% ggplot(aes(x = CPUEjp, y = BPUEjp, col = Espece))+ geom_point(size = 2) +theme_classic(),
-          LacPeche %>% ggplot(aes(x = CPUEhm, y = BPUEhm, col = Espece))+ geom_point(size = 2) +theme_classic(),
-          ncol =2 , nrow =2, common.legend = T, legend = "right")
 
 # Mock community info
 
@@ -97,10 +92,10 @@ if(file.exists(get.value("RefTAXO"))){
   if(ncol(REF) == 1 ) {
     REF <- read_csv2(get.value("RefTAXO"), locale = locale(encoding = "ISO-8859-1"))
   }
-} else{
+} else {
   REF <- read_csv("00_Data/00_FileInfos/Reference_taxonomie.csv", locale = locale(encoding = "ISO-8859-1"))
   if(ncol(REF) == 1 ) {
-    REF <- read_csv2(get.value("RefTAXO"), locale = locale(encoding = "ISO-8859-1"))
+    REF <- read_csv2("00_Data/00_FileInfos/Reference_taxonomie.csv", locale = locale(encoding = "ISO-8859-1"))
   }
 }
 
@@ -1585,9 +1580,9 @@ graph3.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
   ggplot(aes(x = NewNomLac, y = NomFR, fill = factor(PresenceADNe))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   scale_fill_manual(values = "white", limits = "1") +
-  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+#  geom_point(aes(shape = factor(Presence)), col = "gray20") +
   
-  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+#  scale_shape_manual(values = 19, limits = "1", guide = "none") +
   
   labs(title= NULL, x =NULL, y = NULL) +
   guides(fill = FALSE) + 
@@ -1903,14 +1898,19 @@ graph7.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                          ) %>% #View()
   ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
   geom_bin2d(aes(fill = Ncor), col = "gray", size = 0.5) + 
-  geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
+#  geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
   
   scale_fill_distiller(palette = "Reds",
                        direction = 1,
                        #trans = "log10",  
                        na.value = "White", limits = c(0,110)) +
   
-  scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+  
+  
+ # scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
   #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
   
   labs(title= NULL, x =NULL, y = NULL) +
@@ -2019,14 +2019,17 @@ graph7.2 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                            "Éperlan arc-en-ciel")) %>% #View()
   ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
   geom_bin2d(aes(fill = Ncor), col = "gray", size = 0.5) + 
-  geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
+  #geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
   
   scale_fill_distiller(palette = "Reds",
                        direction = 1,
                        #trans = "log10",  
                        na.value = "White", limits = c(0,110)) +
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
   
-  scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+  
+  #scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
   #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
   
   labs(title= NULL, x =NULL, y = NULL) +
@@ -2476,14 +2479,19 @@ graph7.3 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                          NomFR != "Omble de fontaine *") %>% #View()
   ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
   geom_bin2d(aes(fill = Ncor), col = "gray", size = 0.5) + 
-  geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
+  #geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
   
   scale_fill_distiller(palette = "Reds",
                        direction = 1,
                        #trans = "log10",  
                        na.value = "White", limits = c(0,110)) +
   
-  scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+  
+  
+  #scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
   #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
   
   labs(title= NULL, x =NULL, y = NULL) +
@@ -2518,14 +2526,14 @@ graph7.4 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
   #View()
   ggplot(aes(x = NewNomLac, y = NomFR, shape = DiffInv)) + 
   geom_bin2d(aes(fill = Ncor), col = "gray", size = 0.5) + 
-  geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
+  #geom_point(size = 3, fill = "yellow",  stroke = 1, col = "gray30") + 
   
   scale_fill_distiller(palette = "Reds",
                        direction = 1,
                        #trans = "log10",  
                        na.value = "White", limits = c(0,110)) +
   
-  scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
+  #scale_shape_manual(values = c(3,6), name = "Comparaison avec\nl'inventaire traditionnel", limits = c("Present ADNe seul", "Present trad seul"), labels = c("Ajout", "Manquant")) +
   #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
   
   labs(title= NULL, x =NULL, y = NULL) +
