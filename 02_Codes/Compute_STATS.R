@@ -1360,6 +1360,35 @@ Sample.data %>% filter(#str_detect(Assign, "Teleostei") == F,
         strip.text.y = element_text(angle = 0)) #+ coord_flip()
 
 
+# Graph of what was done check first samples
+
+Sample.data %>% filter(#str_detect(Assign, "Teleostei") == F,
+  #str_detect(Assign, "Gadidae") == F,
+  #str_detect(Assign, "Sebaste") == F,
+  Locus %in% c("12s"),
+  Method %in% c("ASV"),
+  Location == "Avant-pays") %>%
+  group_by(NomLac, Sample, Locus, Method, NameAssign, NameAssign.99, Taxo, Location) %>% 
+  summarise(N = sum(N, na.rm=T),
+            Nmax = max(N)) %>% #View()
+  
+  #mutate(Locus = ifelse(Locus == "12s", "12s", "cytB (R1)")) %>% 
+  filter(Nmax>=0) %>% # View()
+  
+  ggplot(aes(x = Sample, y = NameAssign, fill = N)) + 
+  geom_bin2d(col = "gray") + 
+  scale_fill_distiller(palette = "Spectral", trans = "log10",  na.value = "White") +
+  #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
+  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
+  labs(title= NULL, x ="Lac", y = "Assignation") +
+  guides(fill = guide_colourbar(title = "N lectures", title.hjust = 0)) + 
+  theme_bw()+
+  facet_grid(Taxo~ NomLac, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.ticks.y = element_blank(),
+        strip.text.y = element_text(angle = 0)) #+ coord_flip()
+
+
 # Vérifier ce qu'il se passe dans les lacs Giron, Parker et Pêche
 
 Sample.data %>% filter(#str_detect(Assign, "Teleostei") == F,
@@ -1398,10 +1427,17 @@ Sample.graph <- Sample.data %>% mutate(NameAssign.99 = ifelse(NameAssign.99 == "
                                        str_detect(NameAssign.99, " "), 
                                        str_detect(NameAssign.99, "Gadus morhua") == FALSE,
                                        #str_detect(NameAssign.99, "Salmo salar") == FALSE,
-                                       str_detect(NameAssign.99, "Sebaste") == FALSE#,         
+                                       str_detect(NameAssign.99, "Sebaste") == FALSE,#,
+                                       # Enlever quelques échantillons particulièrement contaminés
+                                       str_detect(Sample, "Sample_Edo_R_p1.G1") == FALSE, #7
+                                       str_detect(Sample, "p1.D3") == FALSE, #19
+                                       str_detect(Sample, "p1.G3") == FALSE, #22
+                                       str_detect(Sample, "p1.B4") == FALSE, # 25
+                                       str_detect(Sample, "p1.B2") == FALSE, #10
+                                       str_detect(Sample, "p1.E2") == FALSE #13
                                        #Locus %in% c("12s"),
                                        #Method %in% c("ASV")
-                                       )  %>% 
+                                       )  %>% #View()
                                 #Some species with problems
                                 group_by(NomLac, Locus, Method, Sample, NameAssign.99, Volume, CorrFiltre) %>% 
                                 summarise(N = sum(N, na.rm = T)) %>%  
@@ -1442,7 +1478,7 @@ Sample.graph <- Sample.data %>% mutate(NameAssign.99 = ifelse(NameAssign.99 == "
                                 left_join(LacSample %>% select(NomLac, Rotenode, Affluent, Effluent, Bassin, SousBassin, Ordre, Volume),
                                           by = "NomLac") %>% 
                                 mutate(NewBassin = ifelse(Bassin == "Isae", paste(Bassin,SousBassin,sep=":"), Bassin),
-                                       NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Wapizagonke", "Aticagamac", "Cinq", "Cauche", "Theode", "St-Maurice", "Mattawin", "Isolé")),
+                                       NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Isae-Ouest", "Wapizagonke", "Aticagamac", "Cinq", "Cauche", "Theode", "St-Maurice", "Mattawin", "Isolé")),
                                        NewNomLac = ifelse(is.na(Affluent), paste(NomLac, "*"), NomLac),
                                        Ordre = factor(Ordre),
                                        NewNomLac = factor(NewNomLac, levels=unique(NewNomLac[order(NewBassin, Ordre)]))
