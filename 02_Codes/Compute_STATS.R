@@ -1099,6 +1099,8 @@ Summary.haplo %>% filter(Assign != "Root", Level > 2) %>%
 
 ASV.12s.SEQ <- data.frame(ID = ASVtab.12s$ID, SEQ = row.names(ASVtab.12s))
 
+ASVtab.12s.wTAXO %>% left_join(ASV.12s.SEQ) %>%   filter(str_detect(Assign, "Anas"))
+
 ASVtab.12s.wTAXO %>% left_join(ASV.12s.SEQ) %>% 
                          mutate(Assign = Assign %>% str_replace("Salvelinus", "Salvelinus;Salvelinus sp.")) %>% 
                          filter(str_detect(Assign, "Teleostei"),
@@ -1271,13 +1273,12 @@ Sample.data <- rbind(Sample.data, DATA)
 
 unique(Sample.data$NameAssign)
 
-# Try to do something with blast99
-
+# Add info from blast 99 results (hereafter NameAssign.99)
 
 Sample.data <- Sample.data %>% mutate(Method = str_sub(Data,1,3),
                                       Locus = Data %>% str_remove(paste0(Method, "tab.")),
-  #Integrate ALL the 99 blast results
-                                      #SP = ifelse(Locus == "12s" & Method == "ASV", SP, NA),
+                                      #Integrate ALL the 99 blast results
+                                      SP = ifelse(Locus == "12s", SP, NA),
                                       #SP = ifelse( str_detect(SP,"/")==F, SP, NA ),
                                       #Identic.SP = ifelse(NameAssign == SP, "Oui", "Non"),
                                       # Integrate only luxilus cornutus  
@@ -1409,19 +1410,49 @@ Sample.data %>% filter(#str_detect(Assign, "Teleostei") == F,
         strip.text.y = element_text(angle = 0)) #+ coord_flip()
 
 
+# Graphe pour vois les N min a instaurer
+Sample.data %>% mutate(NameAssign.99 = ifelse(NameAssign.99 == "Salvelinus", "Salvelinus sp.", 
+                                              ifelse(NameAssign.99 == "Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", "Salvelinus sp.",NameAssign.99))) %>% 
+  filter(str_detect(Assign, "Teleostei"),
+         str_detect(NameAssign.99, " "), 
+         str_detect(NameAssign.99, "Gadus morhua") == FALSE,
+         #str_detect(NameAssign.99, "Salmo salar") == FALSE,
+         str_detect(NameAssign.99, "Sebaste") == FALSE,#,
+         # Enlever quelques échantillons particulièrement contaminés
+         str_detect(Sample, "Sample_Edo_R_p1.G1") == FALSE, #7
+         str_detect(Sample, "p1.D3") == FALSE, #19
+         str_detect(Sample, "p1.G3") == FALSE, #22
+         str_detect(Sample, "p1.B4") == FALSE, # 25
+         str_detect(Sample, "p1.B2") == FALSE, #10
+         str_detect(Sample, "p1.E2") == FALSE #13
+         #Locus %in% c("12s"),
+         #Method %in% c("ASV")
+  )  %>% #View()
+  #Some species with problems
+  group_by(NomLac, Locus, Method, Sample, NameAssign.99, Volume, CorrFiltre) %>% 
+  summarise(N = sum(N, na.rm = T)) %>%
+  filter(N>0, 
+         Method == "ASV",
+         Locus == "12s",
+         NameAssign.99 != "Salmo salar") %>% 
+  #filter(NameAssign.99 == "Ameiurus nebulosus", NomLac == "Solitaire") %>% View()
+  ggplot(aes(x=N)) + 
+  geom_histogram() +
+  scale_x_continuous(trans = "log2") +
+  facet_wrap(~NameAssign.99, scales = "free")
+
 
 
 
 
 # Proportion des échantilllons avec l'une ou l'autre des espèces
 
-
 Sample.graph <- Sample.data %>% mutate(NameAssign.99 = ifelse(NameAssign.99 == "Salvelinus", "Salvelinus sp.", 
                                                               ifelse(NameAssign.99 == "Salvelinus namaycush/Salvelinus fontinalis/Salvelinus alpinus", "Salvelinus sp.",NameAssign.99))) %>% 
                                 filter(str_detect(Assign, "Teleostei"),
                                        str_detect(NameAssign.99, " "), 
                                        str_detect(NameAssign.99, "Gadus morhua") == FALSE,
-                                       #str_detect(NameAssign.99, "Salmo salar") == FALSE,
+                                       #str_detect(NameAssign.99, "Salmo salar") == FALSE, # Potentiellement la ouananiche, on garde
                                        str_detect(NameAssign.99, "Sebaste") == FALSE,#,
                                        # Enlever quelques échantillons particulièrement contaminés
                                        str_detect(Sample, "Sample_Edo_R_p1.G1") == FALSE, #7
@@ -1439,8 +1470,13 @@ Sample.graph <- Sample.data %>% mutate(NameAssign.99 = ifelse(NameAssign.99 == "
                                 #Complete for all species
                                 complete(NameAssign.99, NomLac, Method, Locus) %>% 
                                 mutate(N = ifelse(is.na(N), 0, N),
+                                       # Enlever les N == 1
+                                       N = ifelse(N == 1 & Locus == "12s", 0, N),
+                                       # Etre plus sévère pour la barbotte
+                                       N = ifelse(N < 250 & NameAssign.99 == "Ameiurus nebulosus", 0, N),
                                        Nlog = ifelse(N == 0 , NA, 
-                                                    ifelse(N == 1, 0.5, log2(N))),
+                                                    #log2(N)),
+                                                     ifelse(N == 1, 0.1, log2(N))),
                                        Nlog.cor = ifelse(is.na(Nlog), NA, Nlog / CorrFiltre / Volume * 1000)
                                        ) %>% #View()
                                 # Get one line by sp / lake
@@ -1473,7 +1509,7 @@ Sample.graph <- Sample.data %>% mutate(NameAssign.99 = ifelse(NameAssign.99 == "
                                 left_join(LacSample %>% select(NomLac, Rotenode, Affluent, Effluent, Bassin, SousBassin, Ordre, Volume),
                                           by = "NomLac") %>% 
                                 mutate(NewBassin = ifelse(Bassin == "Isae", paste(Bassin,SousBassin,sep=":"), Bassin),
-                                       NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Isae-Ouest", "Wapizagonke", "Aticagamac", "Cinq", "Cauche", "Theode", "St-Maurice", "Mattawin", "Isolé")),
+                                       NewBassin = factor(NewBassin, levels = c("Isae:Ecarte", "Isae:Soumire", "Isae:Peche", "Isae:Francais", "Isae:Hamel", "Isae:Isae", "Bouchard", "Isae-Ouest", "Wapizagonke", "Aticagamac", "Cinq", "Brier", "Theode", "St-Maurice", "Mattawin", "Isolé")),
                                        NewNomLac = ifelse(is.na(Affluent), paste(NomLac, "*"), NomLac),
                                        Ordre = factor(Ordre),
                                        NewNomLac = factor(NewNomLac, levels=unique(NewNomLac[order(NewBassin, Ordre)]))
@@ -1489,7 +1525,8 @@ Sample.graph.red <- bind_rows(Sample.graph %>% filter(Method %in% c("ASV", NA),
                                                   NomFR == "Omble de fontaine")# %>% View()
                           ) %>%  
                 mutate(NomFR = ifelse(NomFR %in% c("Omble de fontaine", "Méné à nageoires rouges"), paste(NomFR, "*"), NomFR),
-                       NomFR = factor(NomFR, levels = rev(c("Omble de fontaine *", "Omble chevalier", "Touladi", "Salvelinus sp.", "Saumon atlantique", 
+                       NomFR = ifelse(NomFR == "Saumon atlantique", "Ouananiche", NomFR),
+                       NomFR = factor(NomFR, levels = rev(c("Omble de fontaine *", "Omble chevalier", "Touladi", "Salvelinus sp.", "Ouananiche", 
                                                           
                                                             "Barbotte brune", 
                                                             "Meunier noir",
@@ -1542,7 +1579,8 @@ Sample.graph %>% group_by(NsamplePre) %>%
 
 Sample.graph.red %>% filter(Location == "Avant-pays") %>% 
   group_by(DiffInv) %>% 
-  summarise(N = n())
+  summarise(N = n(),
+            Perc = N / 702)
 
  
 SP.presentes <- Sample.graph.red %>% filter(N >= 1) %>% 
@@ -1755,22 +1793,57 @@ ggarrange(graph3 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
 # Then add info on quality
 
 graph5 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
-                                       NomFR %in% SP.presentes) %>% 
+                                       NomFR  %nin% c("Méné jaune", "Crapet-soleil", "Doré jaune", "Grand brochet")) %>% 
                                 mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
   ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
   #scale_fill_discrete(na.value = "white", guide = "none") +
-  geom_point(size = 2,  stroke = 1, col = "gray20") +
   
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+  
+  
+  #geom_point(size = 2,  stroke = 1, col = "gray20") +
   #scale_shape_manual(values = c(1), name = NULL, limits = "2 et plus", labels = c("Présent dans plus\nd'un échantillon")) +
-  
-  scale_shape_manual(values = c(49,50,51,52,53,54,55,56,57,58), name = NULL, limits = c("1","2","3", "4", "5", "6", "7", "8","9","10"), guide = "none") +
+  #scale_shape_manual(values = c(49,50,51,52,53,54,55,56,57,58), name = NULL, limits = c("1","2","3", "4", "5", "6", "7", "8","9","10"), guide = "none") +
   
   #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
   #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
-  labs(title= NULL, x =NULL, y = NULL) +
-  guides(fill = FALSE) + 
+  labs(title= NULL, x =NULL, y = NULL, fill = "Indice d'abondance") +
+  
+ # guides(fill = FALSE) + 
+  theme_bw()+
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white"),
+        legend.position = "top",
+        legend.text = element_text(size=9)
+  ) 
+
+
+graph5 
+
+graph5.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
+                                       NomFR %in% SP.presentes,
+                                       NsampleTot > 1 ) %>%  
+  mutate(Ncor = ifelse(Ncor == 0, NA, Ncor),
+         Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
+         Ncor = ifelse(NsamplePre ==1, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(Presence))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
+  #scale_fill_discrete(na.value = "white", guide = "none") +
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
+  labs(title= NULL, x =NULL, y = NULL, fill = "Indice\nd'abondance") +
+  
+  #guides(fill = FALSE) + 
   theme_bw()+
   facet_grid(. ~ NewBassin, scale = "free", space = "free") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -1779,8 +1852,8 @@ graph5 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
         strip.background = element_rect(fill="white")
   ) 
 
+graph5.1 
 
-graph5 
 
 graph6 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
                                        NomFR %in% SP.presentes) %>% 
@@ -1789,16 +1862,23 @@ graph6 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
   #scale_fill_discrete(na.value = "white", guide = "none") +
-  geom_point(size = 2,  stroke = 1, col = "gray20") +
+  
+  
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+  
+  
+  #geom_point(size = 2,  stroke = 1, col = "gray20") +
   
   #scale_shape_manual(values = c(1), name = NULL, limits = "2 et plus", labels = c("Présent dans plus\nd'un échantillon")) +
   
-  scale_shape_manual(values = c(49,50,51,52,53,54,55,56,57,58), name = NULL, limits = c("1","2","3", "4", "5", "6", "7", "8","9","10"), guide = "none") +
+  #scale_shape_manual(values = c(49,50,51,52,53,54,55,56,57,58), name = NULL, limits = c("1","2","3", "4", "5", "6", "7", "8","9","10"), guide = "none") +
   
   #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
   #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
-  labs(title= NULL, x =NULL, y = NULL) +
-  guides(fill = FALSE) + 
+  labs(title= NULL, x =NULL, y = NULL, fill = "Indice\nd'abondance") +
+#  guides(fill = FALSE) + 
   theme_bw()+
   facet_grid(. ~ NewBassin, scale = "free", space = "free") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -1810,17 +1890,54 @@ graph6 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
 
 graph6
 
+graph6.1 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
+                                         NomFR %in% SP.presentes,
+                                         NsampleTot > 1 ) %>% 
+  mutate(Ncor = ifelse(Ncor == 0, NA, Ncor),
+         Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
+         Ncor = ifelse(NsamplePre ==1, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(Presence))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
+  #scale_fill_discrete(na.value = "white", guide = "none") +
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+  labs(title= NULL, x =NULL, y = NULL, fill = "Indice\nd'abondance") +
+  
+  #guides(fill = FALSE) + 
+  theme_bw()+
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white")
+  ) 
+
+graph6.1 
+
+
 ggsave(filename = file.path(get.value("result.FINAL"), "Abondance.AvP.ASV.12S.png"),
        width = 6.5, height = 5,
        plot = graph5
 )
 
 
+
+ggsave(filename = file.path(get.value("result.FINAL"), "Abondance.AvP.Seuil.ASV.12S.png"),
+       width = 6.5, height = 5,
+       plot = graph5.1
+)
+
 ggsave(filename = file.path(get.value("result.FINAL"), "Abondance.ArrP.ASV.12S.png"),
        width = 6.5, height = 5,
        plot = graph6
 )
 
+ggsave(filename = file.path(get.value("result.FINAL"), "Abondance.ArrP.Seuil.ASV.12S.png"),
+       width = 6.5, height = 5,
+       plot = graph6.1
+)
 
 ggarrange(graph5 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
             ggtitle("Avant-pays"),
