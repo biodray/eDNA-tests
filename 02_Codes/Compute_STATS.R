@@ -1797,7 +1797,7 @@ graph5 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                 mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
   ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
-  scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
+  scale_fill_distiller(palette = "Spectral", direction = -1, na.value="white", limits = c(0,110)) +
   #scale_fill_discrete(na.value = "white", guide = "none") +
   
   geom_point(aes(shape = factor(Presence)), col = "gray20") +
@@ -1811,7 +1811,7 @@ graph5 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
   
   #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
   #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
-  labs(title= NULL, x =NULL, y = NULL, fill = "Indice d'abondance") +
+  labs(title= NULL, x =NULL, y = NULL, fill = "Indice\nd'abondance") +
   
  # guides(fill = FALSE) + 
   theme_bw()+
@@ -1821,20 +1821,26 @@ graph5 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
         strip.text.x = element_text(angle = 90),
         strip.background = element_rect(fill="white"),
         legend.position = "top",
-        legend.text = element_text(size=9)
+        legend.text = element_text(size=8),
+        legend.title = element_text(size=9)
+        
   ) 
 
 
 graph5 
 
 graph5.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
-                                       NomFR %in% SP.presentes,
-                                       NsampleTot > 1 ) %>%  
+                                         NomFR  %nin% c("Méné jaune", "Crapet-soleil", "Doré jaune", "Grand brochet")
+                                         #NomFR %in% SP.presentes,
+                                       #NsampleTot > 1 
+                                       
+                                       ) %>%  
   mutate(Ncor = ifelse(Ncor == 0, NA, Ncor),
          Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
          Ncor = ifelse(NsamplePre ==1, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
+  #filter(!is.na(Ncor)) %>% 
   ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(Presence))) + 
-  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  geom_bin2d(col = "gray", na.rm =FALSE) + 
   scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
   #scale_fill_discrete(na.value = "white", guide = "none") +
   geom_point(aes(shape = factor(Presence)), col = "gray20") +
@@ -1849,14 +1855,18 @@ graph5.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
         axis.ticks.y = element_blank(),
         strip.text.x = element_text(angle = 90),
-        strip.background = element_rect(fill="white")
+        strip.background = element_rect(fill="white"),
+        legend.position = "top",
+        legend.text = element_text(size=9)
   ) 
 
 graph5.1 
 
 
 graph6 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
-                                       NomFR %in% SP.presentes) %>% 
+                                       NomFR  %nin% c("Méné jaune", "Crapet-soleil", "Doré jaune", "Grand brochet", "Ouananiche", "Fouille-roche zébré", "Épinoche à neuf épines", "Méné à nageoires rouges *", "Museau noir", "Ouitouche", "Chabot à tête plate", "Fondule barré", "Éperlan arc-en-ciel")
+                                       #NomFR %in% SP.presentes,
+                                       ) %>% 
   mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>%# pull(Ncor) %>% max()
   ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
@@ -1884,15 +1894,19 @@ graph6 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
         axis.ticks.y = element_blank(),
         strip.text.x = element_text(angle = 90),
-        strip.background = element_rect(fill="white")
+        strip.background = element_rect(fill="white"),
+        legend.position = "top",
+        legend.text = element_text(size=9)
   ) 
 
 
 graph6
 
 graph6.1 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
-                                         NomFR %in% SP.presentes,
-                                         NsampleTot > 1 ) %>% 
+                                         NomFR  %nin% c("Méné jaune", "Crapet-soleil", "Doré jaune", "Grand brochet", "Ouananiche", "Fouille-roche zébré", "Épinoche à neuf épines", "Méné à nageoires rouges *", "Museau noir", "Ouitouche", "Chabot à tête plate", "Fondule barré", "Éperlan arc-en-ciel")
+                                         #NomFR %in% SP.presentes,
+                                         #NsampleTot > 1
+                                         ) %>% 
   mutate(Ncor = ifelse(Ncor == 0, NA, Ncor),
          Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
          Ncor = ifelse(NsamplePre ==1, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
@@ -1911,14 +1925,16 @@ graph6.1 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
         axis.ticks.y = element_blank(),
         strip.text.x = element_text(angle = 90),
-        strip.background = element_rect(fill="white")
+        strip.background = element_rect(fill="white"),
+        legend.position = "top",
+        legend.text = element_text(size=9)
   ) 
 
 graph6.1 
 
 
 ggsave(filename = file.path(get.value("result.FINAL"), "Abondance.AvP.ASV.12S.png"),
-       width = 6.5, height = 5,
+       width = 6.5, height = 5.5,
        plot = graph5
 )
 
@@ -2477,7 +2493,14 @@ plot(allEffects(mLake.m0))
 # Modèle pour les CPUE/BPUE
 
 Sample.mod.data.Etal <- Sample.mod.data %>% filter(NomLac %in% LacInv2$NomLac,
-                                                   NameAssign.99 %in% LacInv2$Espece) %>% 
+                                                   NameAssign.99 %in% LacInv2$Espece#,
+                                                   #str_detect(Sample, "Sample_Edo_R_p1.G1") == FALSE, #7
+                                                   #str_detect(Sample, "p1.D3") == FALSE, #19
+                                                   #str_detect(Sample, "p1.G3") == FALSE, #22
+                                                   #str_detect(Sample, "p1.B4") == FALSE, # 25
+                                                   #str_detect(Sample, "p1.B2") == FALSE, #10
+                                                   #str_detect(Sample, "p1.E2") == FALSE #13) %>%          
+                                                   ) %>% 
                     left_join(LacInv2 %>% filter(Peche == "Verveux",
                                                  Mesure == "BPUE") %>% 
                                           select(NomLac, Espece, Value, Density.s), 
@@ -2994,7 +3017,7 @@ graph8 <- Sample.mod.data.Etal %>%  mutate(N = ifelse(is.na(N), 0, N),
   guides(fill = guide_colourbar(title = "Indice d'abondance\nd'ADNe", title.hjust = 0)) +
   
   theme_bw() + theme(strip.background = element_rect(fill="white"),
-                     legend.position = "bottom")
+                     legend.position = "top")
 
 
 graph8
@@ -3047,12 +3070,12 @@ graph9 <- Sample.mod.data.Peche %>%  mutate(N = ifelse(is.na(N), 0, N),
   guides(fill = guide_colourbar(title = "Indice d'abondance\nd'ADNe", title.hjust = 0)) +
   
   theme_bw() + theme(strip.background = element_rect(fill="white"),
-                     legend.position = "bottom")
+                     legend.position = "top")
 
 graph9
 
 ggsave(filename = file.path(get.value("result.FINAL"), "CompPeche.ASV.12S.png"),
-       width = 7, height = 5,
+       width = 5, height = 3,
        plot = graph9
 )
 
