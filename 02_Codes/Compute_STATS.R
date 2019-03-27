@@ -26,6 +26,10 @@ library(ggpubr)    # on github - for nice graphs
 #Function "Not IN"
 `%nin%` = Negate(`%in%`)
 
+# For modelisation
+library(lme4)
+library(effects)
+
 # Data --------------------------------------------------------------------
 
 # Sample INFO
@@ -2563,8 +2567,7 @@ Sample.mod.data$NomFR %>% unique()
 Sample.mod.data$NomLac %>% unique()
 names(Sample.mod.data)
 
-library(lme4)
-library(effects)
+
 
 sum(Sample.mod.data$DiffInv01) / nrow(Sample.mod.data)
 sum(DATA2$DiffInv01) / nrow(DATA)
@@ -3218,7 +3221,7 @@ graph8 <- Sample.mod.data.Etal %>%  mutate(N = ifelse(is.na(N), 0, N),
   ggplot(aes(x = Value, y = Nlog.cor, col = CatSite)) +
   geom_smooth(method = "lm", se = FALSE) +                              
   geom_count(show.legend = F) + 
-  #stat_cor(method = "spearman", cex= 3.5) +
+  stat_cor(method = "spearman", cex= 3.5) +
                                 facet_wrap(~ NomFR, scale = "free", nrow=2) +
   scale_colour_manual(values = c("blue","red"), name = "Type d'échantillon", limits = c("RIV", "PEL"), labels = c("Riverain", "Pélagique")) +
   #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
@@ -3247,7 +3250,7 @@ ggpairs( LacPeche %>% spread(Mesure, Value) %>% select(BPUEhm, BPUEjp, CPUEhm, C
 LacPeche$NomLac %>% unique()
 
 Sample.mod.data.Peche <- Sample.mod.data %>% filter(NomLac %in% LacPeche$NomLac,
-                                                    NameAssign.99 %in% c(LacPeche$Espece %>% unique, "Salvelinus sp.")) %>%
+                                                    NameAssign.99 %in% c(LacPeche$Espece %>% unique, "Salvelinus sp.")) %>% #pull(NomLac) %>% unique()
    mutate(NameAssign.99.join = NameAssign.99,
           NameAssign.99.join = str_replace(NameAssign.99.join, "Salvelinus sp.", "Salvelinus fontinalis")) %>% 
   left_join(LacPeche %>% filter(Mesure == "BPUEjp") %>% 
@@ -3271,7 +3274,7 @@ graph9 <- Sample.mod.data.Peche %>%  mutate(N = ifelse(is.na(N), 0, N),
   ggplot(aes(x = Value, y = Nlog.cor, col = CatSite)) +
   geom_smooth(method = "lm", se = FALSE) +                              
   geom_count(show.legend = F) + 
-  #stat_cor(method = "spearman", cex= 3.5) +
+  stat_cor(method = "spearman", cex= 3.5) +
   facet_wrap(~ Marker, nrow=1) +
   scale_colour_manual(values = c("blue","red"), name = "Type d'échantillon", limits = c("RIV", "PEL"), labels = c("Riverain", "Pélagique")) +
   #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
