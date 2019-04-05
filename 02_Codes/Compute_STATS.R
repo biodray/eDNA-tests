@@ -3217,11 +3217,11 @@ graph8 <- Sample.mod.data.Etal %>%  mutate(N = ifelse(is.na(N), 0, N),
                                  Nlog.cor = ifelse(is.na(Nlog), 0, Nlog / CorrFiltre / Volume.x * 1000)) %>% 
                              filter(#Value > 0,
                                     NomLac %nin% c("Giron", "Parker"),
-                                   NomFR != "Perchaude") %>% #View()
+                                   NomFR %nin% c("Perchaude", "Omble de fontaine")) %>% #View()
   ggplot(aes(x = Value, y = Nlog.cor, col = CatSite)) +
   geom_smooth(method = "lm", se = FALSE) +                              
   geom_count(show.legend = F) + 
-  stat_cor(method = "spearman", cex= 3.5) +
+  #stat_cor(method = "spearman", cex= 3.5) +
                                 facet_wrap(~ NomFR, scale = "free", nrow=2) +
   scale_colour_manual(values = c("blue","red"), name = "Type d'échantillon", limits = c("RIV", "PEL"), labels = c("Riverain", "Pélagique")) +
   #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
