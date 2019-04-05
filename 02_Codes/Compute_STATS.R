@@ -2025,6 +2025,49 @@ graph6 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
 
 graph6
 
+graph6.0 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
+                                         NomFR  %nin% c("Méné jaune", "Crapet-soleil", "Doré jaune", "Grand brochet") #, "Ouananiche", "Fouille-roche zébré", "Épinoche à neuf épines", "Méné à nageoires rouges *", "Museau noir", "Ouitouche", "Chabot à tête plate", "Fondule barré", "Éperlan arc-en-ciel")
+                                       #NomFR %in% SP.presentes,
+) %>% 
+  mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>%# pull(Ncor) %>% max()
+  ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
+  geom_bin2d(col = "gray", na.rm = FALSE) + 
+  #scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
+  scale_fill_gradient(low = "skyblue", high = "navyblue", na.value="white", limits = c(0,110), breaks= c(1,25,50, 75,100)) + 
+  
+  #scale_fill_discrete(na.value = "white", guide = "none") +
+  
+  
+  geom_point(aes(shape = factor(Presence)), col = "gray20") +
+  
+  scale_shape_manual(values = 19, limits = "1", guide = "none") +
+  
+  
+  #geom_point(size = 2,  stroke = 1, col = "gray20") +
+  
+  #scale_shape_manual(values = c(1), name = NULL, limits = "2 et plus", labels = c("Présent dans plus\nd'un échantillon")) +
+  
+  #scale_shape_manual(values = c(49,50,51,52,53,54,55,56,57,58), name = NULL, limits = c("1","2","3", "4", "5", "6", "7", "8","9","10"), guide = "none") +
+  
+  #scale_fill_gradient(low = "darkgray", high = "red", trans = "log") +
+  #scale_y_discrete(limits=mixedsort(tab2$Assign)) + #, labels = NULL) +
+  labs(title= NULL, x =NULL, y = NULL, fill = "Indice\nd'abondance") +
+  #  guides(fill = FALSE) + 
+  theme_bw()+
+  facet_grid(. ~ NewBassin, scale = "free", space = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.ticks.y = element_blank(),
+        strip.text.x = element_text(angle = 90),
+        strip.background = element_rect(fill="white"),
+        legend.position = "top",
+        legend.text = element_text(size=8),
+        legend.title = element_text(size=9)
+  ) 
+
+
+graph6.0
+
+
 graph6.1 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
                                          NomFR  %nin% c("Méné jaune", "Crapet-soleil", "Doré jaune", "Grand brochet", "Ouananiche", "Fouille-roche zébré", "Épinoche à neuf épines", "Méné à nageoires rouges *", "Museau noir", "Ouitouche", "Chabot à tête plate", "Fondule barré", "Éperlan arc-en-ciel")
                                          #NomFR %in% SP.presentes,
@@ -2159,6 +2202,23 @@ graph56 <- ggarrange(graph5.1 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")
 
 graph56
 
+graph56.0 <- ggarrange(graph5 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
+                         ggtitle("Avant-pays - Sans minimum"),
+                       graph6.0 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
+                         theme(axis.text.y=element_blank())+
+                         ggtitle("Arrière-pays - Sans minimum"),
+                       graph5.1 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
+                       ggtitle("Avant-pays - Minimum 50% détections"),
+                     graph6.2 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
+                       theme(axis.text.y=element_blank())+
+                       ggtitle("Arrière-pays - Minimum 50% détections"),
+                     #labels = c("A. Avant-pays", "B. Arrière-pays"),
+                     #vjust = 1, hjust = 1,
+                     widths = c(1.7, 1),
+                     ncol=2, nrow=2, align = "hv", common.legend = T, legend = "top") 
+
+graph56.0
+
 graph56.1 <- ggarrange(graph5.2 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
                        ggtitle("Avant-pays"),
                      graph6.3 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
@@ -2175,6 +2235,12 @@ ggsave(filename = file.path(get.value("result.FINAL"), "Abondance.Total.Seuil50.
        width = 10, height = 6,
        plot = graph56
 )
+
+ggsave(filename = file.path(get.value("result.FINAL"), "Abondance.Total.Seuil50.4panels.ASV.12S.png"),
+       width = 10, height = 10,
+       plot = graph56.0
+)
+
 
 ggsave(filename = file.path(get.value("result.FINAL"), "Abondance.Total.Others.ASV.12S.png"),
        width = 10, height = 5,
