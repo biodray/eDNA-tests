@@ -959,7 +959,7 @@ graph1 <- Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
             by = c("Espece" = "Espece_initial"))  %>% #View()
   #mutate(Espece = ifelse(Espece == "Salvelinus fontinalis", "Salvelinus sp.", Espece),
   #       NomFR =ifelse(Espece == "Salvelinus sp.",  "Salvelinus sp.", NomFR)) %>% 
-  
+  filter(Presence == "Espèce présente") %>% 
   ggplot(aes(y = Mix, x = NomFR, fill = NwNA)) + 
   geom_bin2d(col = "darkgray") + 
   scale_fill_distiller(palette = "Spectral", trans = "log10",  na.value = "white", limits= c(1,NA)) +
@@ -972,13 +972,13 @@ graph1 <- Mock.graph.data %>% mutate(Method = str_sub(Data,1,3),
   theme(axis.text.x = element_text(angle = 90, hjust = 1),
         axis.ticks.y = element_blank(),
         axis.text.y = element_blank(),
-        strip.text.x = element_text(angle = 90),
+        #strip.text.x = element_text(angle = 90),
         strip.background = element_rect(fill="white")) #+ coord_flip()
 
 graph1
 
 ggsave(file.path(get.value("result.FINAL"),"Mock.short.png"), plot = graph1,
-       width = 7, height = 4, units = "in")
+       width = 5, height = 3, units = "in")
 
 # Abundance
 
@@ -1496,6 +1496,7 @@ Sample.graph <- Sample.data %>% mutate(NameAssign.99 = ifelse(NameAssign.99 == "
                                 mutate(PropSample2 = ifelse(PropSample == 0, NA, PropSample),
                                        PresenceADNe = ifelse(NsamplePre>=1,1,NA),
                                        NsamplePre2 = ifelse(NsamplePre >=2,"2 et plus",NA)) %>%
+                                #filter(N >=1 & NameAssign.99 == "Ameiurus nebulosus")
                                 # Remove grouping factor
                                 group_by() %>% 
                                 # Comparison trad vs ADNe
@@ -1542,7 +1543,10 @@ Sample.graph.red <- bind_rows(Sample.graph %>% filter(Method %in% c("ASV", NA),
                                                             "Chabot à tête plate",
                                                             "Fondule barré",
                                                             "Éperlan arc-en-ciel",
-                                                            "Grand brochet"))))
+                                                            "Grand brochet")))) %>% 
+            left_join(Sample.graph %>% filter(!is.na(NsampleTot)) %>% group_by(NewNomLac) %>% summarise(NsampleTot2 = unique(NsampleTot))) %>% 
+            mutate(NewNomLac2 = paste0(NewNomLac, " (",NsampleTot2, ")" ))
+
 
 # Other species
 
@@ -1873,7 +1877,7 @@ ggarrange(graph3 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
 graph5 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                        NomFR  %nin% c("Méné jaune", "Crapet-soleil", "Doré jaune", "Grand brochet")) %>% 
                                 mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
-  ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
+  ggplot(aes(x = NewNomLac2, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="white", limits = c(2,110)) +
   scale_fill_gradientn(colours =c("skyblue", "navyblue"), na.value="white", limits = c(0,110), breaks= c(1,25,50, 75,100)) + 
@@ -1916,11 +1920,17 @@ graph5.1 <- Sample.graph.red  %>% filter(Location == "Avant-pays",
                                        #NsampleTot > 1 
                                        
                                        ) %>%  
+ # mutate(Ncor = ifelse(Ncor == 0, NA, Ncor),
+ #        Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
+ #        Ncor = ifelse(NsamplePre ==1, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
+  
   mutate(Ncor = ifelse(Ncor == 0, NA, Ncor),
-         Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
-         Ncor = ifelse(NsamplePre ==1, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
+         #   Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
+         Ncor = ifelse(NsamplePre < 2, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
+  
+  
   #filter(!is.na(Ncor)) %>% 
-  ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(Presence))) + 
+  ggplot(aes(x = NewNomLac2, y = NomFR, fill = Ncor, shape = factor(Presence))) + 
   geom_bin2d(col = "gray", na.rm =FALSE) + 
   #scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
   scale_fill_gradient(low = "skyblue", high = "navyblue", na.value="white", limits = c(0,110), breaks= c(1,25,50, 75,100)) + 
@@ -1949,7 +1959,7 @@ graph5.1
 
 graph5.2 <- Sample.other.graph  %>% filter(Location == "Avant-pays") %>% 
   mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
-  ggplot(aes(x = NewNomLac, y = NameAssign, fill = Ncor, shape = factor(NsamplePre))) + 
+  ggplot(aes(x = NewNomLac2, y = NameAssign, fill = Ncor, shape = factor(NsamplePre))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="white", limits = c(2,110)) +
   scale_fill_gradientn(colours =c("skyblue", "navyblue"), na.value="white", limits = c(0,110), breaks= c(1,25,50, 75,100)) + 
@@ -1988,7 +1998,7 @@ graph6 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
                                        #NomFR %in% SP.presentes,
                                        ) %>% 
   mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>%# pull(Ncor) %>% max()
-  ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
+  ggplot(aes(x = NewNomLac2, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   #scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
   scale_fill_gradient(low = "skyblue", high = "navyblue", na.value="white", limits = c(0,110), breaks= c(1,25,50, 75,100)) + 
@@ -2030,7 +2040,7 @@ graph6.0 <- Sample.graph.red  %>% filter(Location == "Arriere-pays",
                                        #NomFR %in% SP.presentes,
 ) %>% 
   mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>%# pull(Ncor) %>% max()
-  ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
+  ggplot(aes(x = NewNomLac2, y = NomFR, fill = Ncor, shape = factor(NsamplePre))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   #scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
   scale_fill_gradient(low = "skyblue", high = "navyblue", na.value="white", limits = c(0,110), breaks= c(1,25,50, 75,100)) + 
@@ -2073,10 +2083,16 @@ graph6.1 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
                                          #NomFR %in% SP.presentes,
                                          #NsampleTot > 1
                                          ) %>% 
+#  mutate(Ncor = ifelse(Ncor == 0, NA, Ncor),
+#         Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
+#         Ncor = ifelse(NsamplePre ==1, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
+  
   mutate(Ncor = ifelse(Ncor == 0, NA, Ncor),
-         Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
-         Ncor = ifelse(NsamplePre ==1, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
-  ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(Presence))) + 
+        #   Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
+         Ncor = ifelse(NsamplePre < 2, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
+  
+  
+  ggplot(aes(x = NewNomLac2, y = NomFR, fill = Ncor, shape = factor(Presence))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   #scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
   scale_fill_gradient(low = "skyblue", high = "navyblue", na.value="white", limits = c(0,110), breaks= c(1,25,50, 75,100)) + 
@@ -2105,10 +2121,14 @@ graph6.2 <- Sample.graph.red  %>% filter(Location != "Avant-pays",
                                          #NomFR %in% SP.presentes,
                                          #NsampleTot > 1
 ) %>% 
+  #  mutate(Ncor = ifelse(Ncor == 0, NA, Ncor),
+  #         Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
+  #         Ncor = ifelse(NsamplePre ==1, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
+  
   mutate(Ncor = ifelse(Ncor == 0, NA, Ncor),
-         Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
-         Ncor = ifelse(NsamplePre ==1, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
-  ggplot(aes(x = NewNomLac, y = NomFR, fill = Ncor, shape = factor(Presence))) + 
+         #   Ncor = ifelse(PropSample < 0.5, NA, Ncor ),
+         Ncor = ifelse(NsamplePre < 2, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
+  ggplot(aes(x = NewNomLac2, y = NomFR, fill = Ncor, shape = factor(Presence))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   #scale_fill_distiller(palette = "Reds", direction = 1, na.value="white", limits = c(0,110)) +
   scale_fill_gradient(low = "skyblue", high = "navyblue", na.value="white", limits = c(0,110), breaks= c(1,25,50, 75,100)) + 
@@ -2134,7 +2154,7 @@ graph6.2
 
 graph6.3 <- Sample.other.graph  %>% filter(Location != "Avant-pays") %>% 
   mutate(Ncor = ifelse(Ncor == 0, NA, Ncor)) %>% #View() #pull(Ncor) %>% max()
-  ggplot(aes(x = NewNomLac, y = NameAssign, fill = Ncor, shape = factor(NsamplePre))) + 
+  ggplot(aes(x = NewNomLac2, y = NameAssign, fill = Ncor, shape = factor(NsamplePre))) + 
   geom_bin2d(col = "gray", na.rm = FALSE) + 
   #scale_fill_distiller(palette = "Spectral", direction = -1, na.value="white", limits = c(2,110)) +
   scale_fill_gradientn(colours =c("skyblue", "navyblue"), na.value="white", limits = c(0,110), breaks= c(1,25,50, 75,100)) + 
@@ -2208,10 +2228,10 @@ graph56.0 <- ggarrange(graph5 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")
                          theme(axis.text.y=element_blank())+
                          ggtitle("Arrière-pays - Sans minimum"),
                        graph5.1 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
-                       ggtitle("Avant-pays - Minimum 50% détections"),
+                       ggtitle("Avant-pays - Minimum 2 détections"),
                      graph6.2 + theme(plot.margin=unit(c(0.5,0.5, 0.5,0.5),"cm")) +
                        theme(axis.text.y=element_blank())+
-                       ggtitle("Arrière-pays - Minimum 50% détections"),
+                       ggtitle("Arrière-pays - Minimum 2 détections"),
                      #labels = c("A. Avant-pays", "B. Arrière-pays"),
                      #vjust = 1, hjust = 1,
                      widths = c(1.7, 1),
@@ -3340,11 +3360,11 @@ graph9 <- Sample.mod.data.Peche %>%  mutate(N = ifelse(is.na(N), 0, N),
   ggplot(aes(x = Value, y = Nlog.cor, col = CatSite)) +
   geom_smooth(method = "lm", se = FALSE) +                              
   geom_count(show.legend = F) + 
-  stat_cor(method = "spearman", cex= 3.5) +
+  #stat_cor(method = "spearman", cex= 3.5) +
   facet_wrap(~ Marker, nrow=1) +
   scale_colour_manual(values = c("blue","red"), name = "Type d'échantillon", limits = c("RIV", "PEL"), labels = c("Riverain", "Pélagique")) +
   #scale_colour_manual(values = c("gray", "red"), name = "Traitement à la roténode", limits = c("0", "1"), labels = c("Non", "Oui")) +
-  
+  scale_x_continuous(breaks = c(0,0.5,1,1.5,2,2.5), labels = c("0,0", "0,5", "1,0", "1,5", "2,0", "2,5"))+  
   labs(title= NULL, x = "BPUE (heures moyennes)", y = "Indice d'abondance d'ADNe") +
   #guides(fill = guide_colourbar(title = "N moyen\nlectures", title.hjust = 0)) +
   guides(fill = guide_colourbar(title = "Indice d'abondance\nd'ADNe", title.hjust = 0)) +
